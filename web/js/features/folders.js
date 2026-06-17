@@ -16,10 +16,35 @@ const SYSTEM = [
 
 const EMOJI_POOL = ['📁', '🗂️', '📦', '🔖', '⭐', '🎯', '📚', '🎨', '✨', '🚀'];
 
+/** Allowed sort modes for the user folder list. System folders always stay pinned. */
+const SORT_MODES = ['manual', 'name', 'created'];
+const DEFAULT_SORT = 'manual';
+
+/** Compare two user folders under a sort mode. */
+function compareFolders(a, b, mode) {
+  switch (mode) {
+    case 'name':     return a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true });
+    case 'created':  return (a.createdAt || 0) - (b.createdAt || 0);
+    case 'manual':
+    default:         return (a.order ?? 0) - (b.order ?? 0);  // stable insertion order
+  }
+}
+
 export const folders = {
-  /** All folders: system + user, in display order. */
+  /** Allowed sort modes — exposed for the settings/popup UI. */
+  get sortModes() { return SORT_MODES; },
+
+  /** Current folder sort mode ('manual' | 'name' | 'created'). */
+  get sortMode()  { return store.getPrefs().folderSort || DEFAULT_SORT; },
+  set sortMode(mode) {
+    if (!SORT_MODES.includes(mode)) return;
+    store.setPrefs({ folderSort: mode });
+    bus.emit('folders:changed');
+  },
+
+  /** All folders: system (pinned) + user, in the active sort order. */
   all() {
-    const user = store.getFolders();
+    const user = [...store.getFolders()].sort((a, b) => compareFolders(a, b, this.sortMode));
     return [...SYSTEM, ...user];
   },
 
@@ -43,6 +68,8 @@ export const folders = {
       name: name?.trim() || i18n.t('folders.defaultName'),
       icon: EMOJI_POOL[Math.floor(Math.random() * EMOJI_POOL.length)],
       system: false,
+      createdAt: Date.now(),                    // captured so 'Sort by Date Created' works
+      order: list.length,                       // stable position for 'manual' sort
     };
     store.setFolders([...list, folder]);
     bus.emit('folders:changed');
@@ -59,6 +86,12 @@ export const folders = {
   /** Remove a user folder; its notes fall back to 'notes'. */
   remove(id) {
     store.setFolders(store.getFolders().filter(f => f.id !== id));
+    // Reassign every note that lived in the deleted folder back to Notes,
+    // matching the documented behavior (and macOS Notes).
+    store.setNotes(
+      store.getNotes().map(n => n.folder === id ? { ...n, folder: 'notes' } : n)
+    );
     bus.emit('folders:changed');
+    bus.emit('notes:changed');
   },
 };

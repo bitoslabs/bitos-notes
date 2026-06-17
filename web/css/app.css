@@ -152,7 +152,7 @@ svg { width: 100%; height: 100%; }
   font-size: 13px;
 }
 [dir="rtl"] .search-wrap input { padding: 7px 32px 7px 12px; }
-.search-wrap input:focus { outline: 2px solid rgba(0, 122, 255, 0.4); }
+.search-wrap input:focus { outline: 2px solid rgba(var(--notes-blue-rgb), 0.4); }
 .search-wrap input::-webkit-search-cancel-button { -webkit-appearance: none; }
 
 /* ---- Folder list ---- */
@@ -160,7 +160,7 @@ svg { width: 100%; height: 100%; }
 .folder-row {
   width: 100%; display: flex; align-items: center; gap: 8px;
   padding: 6px 8px; border-radius: var(--radius-sm);
-  font-size: 13px; text-align: start;
+  font-size: 13px; text-align: start; cursor: pointer;
   transition: background 0.1s;
 }
 .folder-row:hover { background: var(--hover); }
@@ -172,6 +172,7 @@ svg { width: 100%; height: 100%; }
 
 /* ---- Account bar ---- */
 .account-bar {
+  cursor: pointer; transition: background 0.12s;
   border-top: 1px solid var(--divider);
   padding: 10px 12px;
   display: flex; align-items: center; gap: 8px;
@@ -324,6 +325,25 @@ svg { width: 100%; height: 100%; }
 .segmented button { padding: 6px 14px; border-radius: 5px; font-size: 13px; font-weight: 500; color: var(--text-secondary); transition: background 0.12s, color 0.12s, box-shadow 0.12s; white-space: nowrap; }
 .segmented button.active { background: var(--text-primary); color: var(--bg-window); box-shadow: 0 1px 3px rgba(0,0,0,0.12); font-weight: 600; }
 
+/* Accent color picker */
+.accent-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
+.accent-label { font-size: 13px; color: var(--text-secondary); }
+.accent-swatches { display: flex; gap: 10px; flex-wrap: wrap; }
+.accent-swatch {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 2px solid transparent; cursor: pointer; padding: 0;
+  background: var(--swatch);                                 /* the preset color, set inline */
+  box-shadow: inset 0 0 0 2px var(--bg-window);              /* inner ring so it reads on any bg */
+  transition: transform 0.12s, border-color 0.12s;
+}
+.accent-swatch:hover { transform: scale(1.12); }
+.accent-swatch.active { border-color: var(--text-primary); transform: scale(1.12); }
+.accent-swatch.active::after {                              /* check mark */
+  content: ""; display: block; width: 100%; height: 100%;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5L20 7'/%3E%3C/svg%3E") center / 16px no-repeat;
+}
+@media (prefers-reduced-motion: reduce) { .accent-swatch:hover, .accent-swatch.active { transform: none; } }
+
 /* Language select */
 .lang-select-wrap { position: relative; display: inline-flex; align-items: center; width: 100%; max-width: 280px; }
 .lang-select {
@@ -339,7 +359,7 @@ svg { width: 100%; height: 100%; }
   transition: border-color 0.12s, box-shadow 0.12s;
 }
 .lang-select:hover { border-color: var(--text-secondary); }
-.lang-select:focus { outline: none; border-color: var(--accent, #007AFF); box-shadow: 0 0 0 3px rgba(0,122,255,0.15); }
+.lang-select:focus { outline: none; border-color: var(--notes-blue); box-shadow: 0 0 0 3px var(--notes-blue-glow); }
 .lang-select option { padding: 8px; color: var(--text-primary); background: var(--bg-list); }
 .lang-select-chevron {
   position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
@@ -363,25 +383,35 @@ svg { width: 100%; height: 100%; }
 .relay-url { flex: 1; font-size: 12px; font-family: ui-monospace, "SF Mono", monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .relay-flags { display: flex; gap: 3px; }
 .relay-flag { font-size: 9px; font-weight: 700; padding: 2px 5px; border-radius: 3px; background: var(--hover); color: var(--text-secondary); }
-.relay-flag.on { background: rgba(0, 122, 255, 0.15); color: var(--notes-blue); }
+.relay-flag.on { background: var(--notes-blue-soft); color: var(--notes-blue); }
 .relay-actions { display: flex; gap: 2px; }
 .relay-mini-btn { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 5px; color: var(--text-secondary); }
 .relay-mini-btn:hover { background: var(--hover); color: var(--text-primary); }
 .relay-mini-btn svg { width: 14px; height: 14px; }
 .relay-add-row { display: flex; gap: 6px; margin-top: 8px; }
-.relay-add-row input { flex: 1; padding: 7px 10px; font-size: 12px; background: var(--bg-list); border: 1px solid var(--divider); border-radius: var(--radius-sm); }
-.relay-add-row input:focus { outline: 2px solid rgba(0,122,255,0.4); }
+.relay-add-row .text-input { flex: 1; min-width: 0; }                /* stretch the shared input to fill the row */
+.relay-add-row .ghost-btn { font-size: 13px; padding: 8px 12px; min-height: 0; }      /* compact inline Add button next to the relay URL field */
 
-.ghost-btn { padding: 7px 12px; font-size: 13px; font-weight: 500; color: var(--notes-blue); border-radius: var(--radius-sm); transition: background 0.12s; }
+/* Secondary "ghost" button — text-style, used as Back / Cancel / inline actions.
+   Made self-contained (same shape as .btn-primary) so it lines up at the same
+   height anywhere it appears next to a .btn-primary. Smaller variants in
+   .key-actions / .relay-add-row intentionally override font-size/padding. */
+.ghost-btn {
+  font-family: inherit; font-weight: 600; font-size: 14px;
+  padding: 10px 14px; min-height: 40px;
+  color: var(--notes-blue); background: transparent;
+  border: 0; border-radius: var(--radius-sm);
+  cursor: pointer; transition: background 0.12s, transform 0.06s;
+}
 .ghost-btn:hover { background: var(--hover); }
+.ghost-btn:active { transform: scale(0.98); }
 .ghost-btn.danger { color: var(--notes-red); }
-.row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 12px; }
 .about { text-align: center; font-size: 11px; color: var(--text-tertiary); margin-top: 16px; }
 
 /* Account */
 .account-form { display: flex; gap: 6px; margin-bottom: 8px; }
-.account-form input { flex: 1; min-width: 0; padding: 7px 10px; font-size: 12px; background: var(--bg-list); border: 1px solid var(--divider); border-radius: var(--radius-sm); }
-.account-form input:focus { outline: 2px solid rgba(0,122,255,0.4); }
+.account-form .text-input { flex: 1; min-width: 0; }                      /* stretch the shared input to fill the row */
 .account-status { font-size: 12px; color: var(--text-secondary); line-height: 1.35; }
 .account-status-ok { color: var(--notes-green); font-weight: 600; }
 .account-status-muted { color: var(--text-tertiary); }
@@ -402,6 +432,161 @@ svg { width: 100%; height: 100%; }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 [data-theme="dark"] .toast { background: #f5f5f7; color: #1c1c1e; }
 
+/* ---- Folder row caret (per-row menu trigger) ---- */
+.folder-row { position: relative; }
+.folder-row .folder-caret {
+  width: 20px; height: 20px;
+  display: none;
+  place-items: center;
+  border-radius: 5px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  margin-inline-start: 4px;
+}
+.folder-row .folder-caret svg { width: 14px; height: 14px; fill: currentColor; }
+.folder-row:hover .folder-caret { display: grid; }
+.folder-row .folder-caret:hover { background: var(--active); color: var(--text-primary); }
+/* On touch devices hover is sticky; always show the caret for user folders */
+@media (hover: none) {
+  .folder-row:not(.system) .folder-caret { display: grid; }
+}
+
+/* ---- Popup menu (shared: sort + folder context) ---- */
+.popup-menu {
+  position: fixed;
+  z-index: 150;
+  min-width: 192px;
+  padding: 5px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-modal);
+  border: 1px solid var(--divider);
+  display: flex; flex-direction: column; gap: 1px;
+  animation: pop 0.16s var(--pane-ease);
+  transform-origin: top center;
+  user-select: none;
+}
+.popup-menu.hidden { display: none; }
+.popup-head { padding: 6px 12px 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); }
+.popup-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px; text-align: start;
+  color: var(--text-primary);
+  transition: background 0.1s;
+}
+.popup-item:hover { background: var(--hover); }
+.popup-item.danger { color: var(--notes-red); }
+.popup-item .check {
+  width: 14px; height: 14px; flex-shrink: 0;
+  display: grid; place-items: center;
+}
+.popup-item .check svg { width: 14px; height: 14px; stroke: var(--notes-blue); stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.popup-sep { height: 1px; background: var(--divider); margin: 4px 6px; }
+
+/* ---- Dialog (settings-style confirm/alert/prompt) ---- */
+#dialog-backdrop { z-index: 110; }
+.dialog {
+  width: min(380px, calc(100vw - 32px));
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-modal);
+  padding: 24px 22px 18px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  text-align: center;
+  animation: pop 0.2s var(--pane-ease);
+}
+.dialog-icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; margin-bottom: 2px; }
+.dialog-icon svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.dialog-icon.kind-info { color: var(--notes-blue); background: var(--notes-blue-soft); }
+.dialog-icon.kind-warn { color: var(--notes-yellow); background: rgba(255, 204, 0, 0.16); }
+.dialog-icon.kind-danger { color: var(--notes-red); background: rgba(255, 59, 48, 0.12); }
+.dialog-title { font-size: 16px; font-weight: 700; }
+.dialog-message { font-size: 14px; line-height: 1.45; color: var(--text-primary); }
+.dialog-detail { font-size: 12px; line-height: 1.4; color: var(--text-secondary); }
+.dialog-message.hidden, .dialog-detail.hidden, .dialog-title.hidden { display: none; }
+.dialog-input-wrap { width: 100%; margin-top: 4px; text-align: start; }
+.dialog-input-error { font-size: 11px; color: var(--notes-red); margin-top: 6px; text-align: start; }
+.dialog-input-error.hidden { display: none; }
+.dialog-actions { width: 100%; display: flex; gap: 8px; margin-top: 8px; }
+.dialog-actions button { flex: 1; transition: background 0.12s, opacity 0.12s, transform 0.06s; }
+.dialog-actions button:active { transform: scale(0.98); }
+/* Base action buttons — self-contained so they look right in ANY context:
+   settings panels, the account-setup wizard, the dialog footer, etc. */
+.btn-primary, .btn-secondary {
+  font-family: inherit; font-weight: 600; font-size: 14px;
+  padding: 10px 14px; border-radius: var(--radius-sm); border: 0;
+  cursor: pointer; transition: background 0.12s, filter 0.12s, opacity 0.12s, transform 0.06s;
+  min-height: 40px;                                       /* consistent tap target across button contexts */
+}
+.btn-primary:active, .btn-secondary:active { transform: scale(0.98); }
+.btn-secondary { background: var(--hover); color: var(--text-primary); }
+.btn-secondary:hover { background: var(--active); }
+.btn-primary { background: var(--notes-blue); color: #fff; }
+
+/* Shared text-input look — used by the account wizard's nsec field, settings
+   inputs, and anywhere else that wants a consistent form-control style.
+   Reused instead of duplicating .dialog-input-wrap input block-by-block. */
+.text-input {
+  width: 100%; padding: 10px 12px;
+  font-family: inherit; font-size: 14px; color: var(--text-primary);
+  background: var(--bg-list);
+  border: 1px solid var(--divider); border-radius: var(--radius-sm);
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.text-input::placeholder { color: var(--text-tertiary); }
+.text-input:focus { outline: none; border-color: var(--notes-blue); box-shadow: 0 0 0 3px rgba(0,122,255,0.15); }
+.btn-primary:hover { filter: brightness(1.05); }
+.btn-primary[disabled] { opacity: 0.45; cursor: not-allowed; }
+.btn-primary.danger { background: var(--notes-red); }
+.btn-secondary.hidden, .btn-primary.hidden { display: none; }
+
+/* ---- Account setup modal ---- */
+.account-modal { width: min(440px, calc(100vw - 24px)); }
+.setup-options { display: flex; flex-direction: column; gap: 8px; }
+.setup-option {
+  display: flex; align-items: center; gap: 14px; text-align: start;
+  padding: 14px; border-radius: var(--radius-md);
+  background: var(--bg-list); border: 1px solid var(--divider);
+  transition: border-color 0.12s, background 0.12s, transform 0.06s;
+}
+.setup-option:hover { border-color: var(--notes-blue); background: var(--hover); }
+.setup-option:active { transform: scale(0.99); }
+.setup-opt-icon { font-size: 26px; width: 40px; height: 40px; display: grid; place-items: center; border-radius: var(--radius-sm); background: var(--hover); flex-shrink: 0; }
+.setup-opt-title { font-size: 14px; font-weight: 600; }
+.setup-opt-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+.key-display {
+  margin-top: 12px; padding: 12px; background: var(--bg-list);
+  border: 1px solid var(--divider); border-radius: var(--radius-sm);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.nsec-value {
+  font-family: ui-monospace, "SF Mono", monospace; font-size: 12px;
+  word-break: break-all; line-height: 1.5; color: var(--text-primary);
+  background: var(--hover); padding: 8px 10px; border-radius: var(--radius-sm);
+  -webkit-mask-image: none; min-height: 36px;
+}
+.nsec-value.masked { filter: blur(6px); opacity: 0.6; user-select: none; }
+.key-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.key-actions .ghost-btn { font-size: 12px; padding: 6px 10px; min-height: 0; }       /* compact inline Copy/Download/Hide on the nsec chip */
+
+.backup-confirm {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 12px; font-size: 13px; color: var(--text-primary); cursor: pointer;
+}
+.backup-confirm input[type=checkbox] {
+  appearance: none; -webkit-appearance: none;
+  width: 18px; height: 18px; border-radius: 5px;
+  border: 2px solid var(--text-tertiary); flex-shrink: 0; position: relative;
+  transition: background 0.12s, border-color 0.12s;
+}
+.backup-confirm input[type=checkbox]:checked { background: var(--notes-blue); border-color: var(--notes-blue); }
+.backup-confirm input[type=checkbox]:checked::after {
+  content: ""; position: absolute; left: 4px; top: 1px; width: 5px; height: 9px;
+  border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
 /* ---- Responsive: TABLET (≤1024px) → hide folders pane, use list as root ---- */
 @media (max-width: 1024px) {
   :root { --sidebar-w: 240px; --list-w: 300px; }

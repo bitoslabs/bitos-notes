@@ -5,7 +5,7 @@
  * app is fully functional offline once cached.
  */
 
-const VERSION = 'v2';
+const VERSION = 'v4';
 const CACHE = `bitos-notes-${VERSION}`;
 
 // App shell — everything needed to boot offline.

@@ -35,6 +35,9 @@
       <div class="sidebar-head">
         <h1 class="sidebar-title" data-i18n="folders.title">Folders</h1>
         <div class="sidebar-actions">
+          <button id="folder-sort-btn" class="icon-btn" data-i18n-title="folders.sortMenu" title="Sort Folders By" aria-label="Sort folders by" aria-haspopup="true">
+            <svg viewBox="0 0 24 24" class="ico"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
+          </button>
           <button id="new-folder-btn" class="icon-btn" data-i18n-title="folders.new" title="New folder" aria-label="New folder">
             <svg viewBox="0 0 24 24" class="ico"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v6M9 14h6"/></svg>
           </button>
@@ -51,11 +54,11 @@
 
       <nav id="folder-list" class="folder-list scroll" aria-label="Folder list"></nav>
 
-      <div class="account-bar">
-        <div class="avatar" id="account-avatar">B</div>
+      <div class="account-bar" id="account-bar" role="button" tabindex="0" title="Nostr account">
+        <div class="avatar" id="account-avatar">N</div>
         <div class="account-text">
-          <div class="account-label" id="account-label" data-i18n="account.icloud">iCloud</div>
-          <div class="account-email" id="account-email">BitOS@protonmail.com</div>
+          <div class="account-label" id="account-label" data-i18n="account.icloud">Nostr</div>
+          <div class="account-email" id="account-email">—</div>
         </div>
       </div>
     </aside>
@@ -67,8 +70,11 @@
           <svg viewBox="0 0 24 24" class="ico"><path d="M15 18l-6-6 6-6"/></svg>
           <span data-i18n="nav.folders">Folders</span>
         </button>
-        <h2 id="folder-title" class="list-title">All iCloud</h2>
+        <h2 id="folder-title" class="list-title">All Notes</h2>
         <div class="list-actions">
+          <button id="sort-btn" class="icon-btn" data-i18n-title="sort.menu" title="Sort By" aria-label="Sort notes" aria-haspopup="true">
+            <svg viewBox="0 0 24 24" class="ico"><path d="M4 6h16M6 12h12M9 18h6"/></svg>
+          </button>
           <button id="delete-btn" class="icon-btn icon-btn-danger" data-i18n-title="editor.delete" title="Delete" aria-label="Delete">
             <svg viewBox="0 0 24 24" class="ico"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
           </button>
@@ -159,6 +165,12 @@
             <button data-theme="dark" data-i18n="settings.themeDark">Dark</button>
             <button data-theme="system" data-i18n="settings.themeSystem">System</button>
           </div>
+
+          <!-- Accent color swatches -->
+          <div class="accent-row">
+            <span class="accent-label" data-i18n="settings.accent">Accent color</span>
+            <div class="accent-swatches" id="accent-swatches" role="radiogroup" aria-label="Accent color"></div>
+          </div>
         </section>
 
         <!-- Language -->
@@ -175,10 +187,14 @@
           <h4 data-i18n="settings.account">Nostr Account</h4>
           <p class="section-desc" data-i18n="settings.accountDesc">Connect with an npub for read-only identity, or use nsec when private-key import is ready.</p>
           <div class="account-form">
-            <input id="account-input" type="text" data-i18n-placeholder="settings.accountPlaceholder" placeholder="npub1... or nsec1..." autocomplete="off" />
+            <input id="account-input" class="text-input" type="text" data-i18n-placeholder="settings.accountPlaceholder" placeholder="npub1... or nsec1..." autocomplete="off" />
             <button id="account-connect-btn" class="ghost-btn" data-i18n="settings.accountConnect">Connect</button>
             <button id="account-nip07-btn" class="ghost-btn" data-i18n="settings.accountNip07">Use Wallet</button>
             <button id="account-disconnect-btn" class="ghost-btn danger hidden" data-i18n="settings.accountDisconnect">Disconnect</button>
+          </div>
+          <div class="row-actions">
+            <button id="account-setup-btn" class="ghost-btn" data-i18n="settings.accountSetup">Set up account…</button>
+            <button id="account-backup-btn" class="ghost-btn hidden" data-i18n="settings.accountBackup">Backup key…</button>
           </div>
           <div id="account-status" class="account-status"></div>
         </section>
@@ -212,6 +228,105 @@
   <!-- ============ TOAST ============ -->
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script type="module" src="./js/app.js"></script>
+  <!-- ============ POPUP MENU (shared) ============ -->
+  <div id="popup-menu" class="popup-menu hidden" role="menu" aria-hidden="true"></div>
+
+  <!-- ============ DIALOG (confirm / alert / prompt, settings-style) ============ -->
+  <div id="dialog-backdrop" class="modal-backdrop hidden" aria-hidden="true" role="dialog" aria-modal="true">
+    <div id="dialog" class="dialog">
+      <div id="dialog-icon" class="dialog-icon"></div>
+      <h3 id="dialog-title" class="dialog-title"></h3>
+      <p id="dialog-message" class="dialog-message"></p>
+      <p id="dialog-detail" class="dialog-detail"></p>
+      <div id="dialog-input-wrap" class="dialog-input-wrap hidden">
+        <input id="dialog-input" class="text-input" type="text" autocomplete="off" spellcheck="false" />
+        <div id="dialog-input-error" class="dialog-input-error hidden"></div>
+      </div>
+      <div id="dialog-actions" class="dialog-actions">
+        <button id="dialog-cancel" class="btn-secondary"></button>
+        <button id="dialog-ok" class="btn-primary"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ACCOUNT SETUP / BACKUP MODAL ============ -->
+  <div id="account-modal" class="modal-backdrop hidden" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal account-modal">
+      <header class="modal-head">
+        <h3 id="account-modal-title" data-i18n="account.setupTitle">Set up Nostr account</h3>
+        <button id="account-modal-close" class="icon-btn" aria-label="Close">
+          <svg viewBox="0 0 24 24" class="ico"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </header>
+
+      <div class="modal-body scroll">
+        <!-- Step 1: choose how to set up -->
+        <section class="settings-section" data-step="choose">
+          <h4 data-i18n="account.choose">Choose how to start</h4>
+          <p class="section-desc" data-i18n="account.chooseDesc">A Nostr account is just a key pair — no email, no signup. Your private key (nsec) IS your account, so keep it safe and never share it.</p>
+          <div class="setup-options">
+            <button class="setup-option" data-account-action="create">
+              <div class="setup-opt-icon">✨</div>
+              <div class="setup-opt-text">
+                <div class="setup-opt-title" data-i18n="account.create">Create new key</div>
+                <div class="setup-opt-sub" data-i18n="account.createDesc">Generate a fresh Nostr identity</div>
+              </div>
+            </button>
+            <button class="setup-option" data-account-action="import">
+              <div class="setup-opt-icon">🔑</div>
+              <div class="setup-opt-text">
+                <div class="setup-opt-title" data-i18n="account.import">Import existing key</div>
+                <div class="setup-opt-sub" data-i18n="account.importDesc">Paste an nsec1… you already own</div>
+              </div>
+            </button>
+            <button class="setup-option" data-account-action="nip07">
+              <div class="setup-opt-icon">🦊</div>
+              <div class="setup-opt-text">
+                <div class="setup-opt-title" data-i18n="account.nip07">Use Nostr wallet</div>
+                <div class="setup-opt-sub" data-i18n="account.nip07Desc">Alby / nos2x / amethyst extension</div>
+              </div>
+            </button>
+          </div>
+        </section>
+
+        <!-- Step 2a: create — show generated key, require backup confirm -->
+        <section class="settings-section hidden" data-step="create">
+          <h4 data-i18n="account.backupTitle">Back up your private key</h4>
+          <p class="section-desc" data-i18n="account.backupDesc">This is the <strong>only</strong> time we show this key. Copy it somewhere safe — if you lose it, your account and any synced notes are gone forever.</p>
+          <div class="key-display">
+            <code id="account-generated-nsec" class="nsec-value"></code>
+            <div class="key-actions">
+              <button id="account-copy-nsec" class="ghost-btn" data-i18n="account.copy">Copy</button>
+              <button id="account-download-nsec" class="ghost-btn" data-i18n="account.download">Download</button>
+              <button id="account-show-toggle" class="ghost-btn" data-i18n="account.hide">Hide</button>
+            </div>
+          </div>
+          <label class="backup-confirm">
+            <input type="checkbox" id="account-saved-toggle" />
+            <span data-i18n="account.savedAck">I've saved my key in a secure location</span>
+          </label>
+          <div class="row-actions">
+            <button id="account-back-to-choose" class="ghost-btn" data-i18n="account.back">← Back</button>
+            <button id="account-finish-create" class="btn-primary" disabled data-i18n="account.finish">Finish</button>
+          </div>
+        </section>
+
+        <!-- Step 2b: import nsec -->
+        <section class="settings-section hidden" data-step="import">
+          <h4 data-i18n="account.importTitle">Import your private key</h4>
+          <p class="section-desc" data-i18n="account.importDescLong">Paste your <code>nsec1…</code> key. It will be stored locally on this device only.</p>
+          <input id="account-import-input" class="text-input" type="password" autocomplete="off" spellcheck="false"
+                 data-i18n-placeholder="account.importPlaceholder" placeholder="nsec1…" />
+          <div id="account-import-error" class="dialog-input-error hidden"></div>
+          <div class="row-actions">
+            <button id="account-back-to-choose-2" class="ghost-btn" data-i18n="account.back">← Back</button>
+            <button id="account-finish-import" class="btn-primary" data-i18n="account.importFinish">Import</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/app.js?v=8"></script>
 </body>
 </html>

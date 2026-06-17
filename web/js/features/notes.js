@@ -19,8 +19,12 @@ export const notes = {
 
   find(id) { return this.all().find(n => n.id === id) || null; },
 
-  /** Notes visible in a folder, respecting trash + search filter. */
-  query({ folderId, search = '' } = {}) {
+  /** Current sort preference (stored in prefs). */
+  get sortMode() { return store.getPrefs().sort || 'updated'; },
+  set sortMode(v) { store.setPrefs({ sort: v }); },
+
+  /** Notes visible in a folder, respecting trash + search filter + sort. */
+  query({ folderId, search = '', sort } = {}) {
     let list = this.all().filter(n => {
       if (folderId === 'all')     return n.folder !== 'deleted';
       if (folderId === 'deleted') return n.folder === 'deleted';
@@ -33,8 +37,17 @@ export const notes = {
         noteText(n).toLowerCase().includes(q)
       );
     }
-    // Sort: pinned first, then most-recently-updated.
-    return list.sort((a, b) => (b.pinned - a.pinned) || (b.updatedAt - a.updatedAt));
+    // Sort: pinned always first, then per the chosen ordering.
+    //   'updated' → most-recently-updated first (default)
+    //   'created' → most-recently-created first
+    //   'title'   → alphabetical (A→Z), case-insensitive
+    const mode = sort || this.sortMode;
+    const cmp = mode === 'created'
+      ? (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+      : mode === 'title'
+        ? (a, b) => (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base', numeric: true })
+        : (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0);
+    return list.sort((a, b) => (b.pinned - a.pinned) || cmp(a, b));
   },
 
   /** Create a note in a folder. Returns the new note. */

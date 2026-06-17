@@ -12,6 +12,8 @@ import { notes } from '../features/notes.js';
 import { account } from '../features/account.js';
 import { store } from '../core/store.js';
 import { bus } from '../core/eventbus.js';
+import { accountModal } from './account.js';
+import * as dialog from './dialog.js';
 
 const $ = (id) => document.getElementById(id);
 let addingRelay = false;
@@ -33,6 +35,15 @@ export const settings = {
       if (btn) { theme.setMode(btn.dataset.theme); this._syncTheme(); }
     });
 
+    // Accent color picker (built dynamically from theme.accents)
+    this._buildAccentSwatches();
+    $('accent-swatches').addEventListener('click', (e) => {
+      const sw = e.target.closest('[data-accent]');
+      if (!sw) return;
+      theme.setAccent(sw.dataset.accent);
+      this._syncAccent();
+    });
+
     // Language select
     this._buildLangOptions();
     $('lang-select').addEventListener('change', (e) => {
@@ -47,6 +58,11 @@ export const settings = {
     $('account-connect-btn').addEventListener('click', () => this._connectAccount());
     $('account-nip07-btn').addEventListener('click', () => this._connectNip07());
     $('account-disconnect-btn').addEventListener('click', () => this._disconnectAccount());
+    $('account-setup-btn').addEventListener('click', () => {
+      this.close();
+      accountModal.open('choose');
+    });
+    $('account-backup-btn').addEventListener('click', () => this._backupKey());
     $('account-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') this._connectAccount(); });
 
     // Data
@@ -62,6 +78,7 @@ export const settings = {
 
   open() {
     this._syncTheme();
+    this._syncAccent();
     this._syncLang();
     this._renderRelays();
     this.renderAccount();
@@ -79,6 +96,30 @@ export const settings = {
     const mode = theme.mode;
     $('theme-segmented').querySelectorAll('[data-theme]').forEach(b => {
       b.classList.toggle('active', b.dataset.theme === mode);
+    });
+  },
+
+  /** Build the swatch row once from theme.accents. Active state synced later by _syncAccent(). */
+  _buildAccentSwatches() {
+    const wrap = $('accent-swatches');
+    if (!wrap) return;
+    wrap.innerHTML = theme.accents.map(a => `
+      <button type="button"
+              class="accent-swatch"
+              data-accent="${a.id}"
+              role="radio"
+              aria-checked="false"
+              aria-label="${a.name}"
+              title="${a.name}"
+              style="--swatch:${a.hex}"></button>`).join('');
+  },
+
+  _syncAccent() {
+    const current = theme.accent;
+    $('accent-swatches')?.querySelectorAll('[data-accent]').forEach(sw => {
+      const on = sw.dataset.accent === current;
+      sw.classList.toggle('active', on);
+      sw.setAttribute('aria-checked', on ? 'true' : 'false');
     });
   },
 
@@ -106,22 +147,35 @@ export const settings = {
     const connect = $('account-connect-btn');
     const nip07 = $('account-nip07-btn');
     const disconnect = $('account-disconnect-btn');
+    const setup = $('account-setup-btn');
+    const backup = $('account-backup-btn');
     const status = $('account-status');
 
     if (acc) {
-      input.value = acc.nsec || acc.npub || acc.rawPubkey || '';
+      // Never echo the full private key back into the field — it encourages
+      // accidental copy-paste. Show the public identity instead.
+      input.value = acc.npub || (acc.rawPubkey ? 'npub1' + acc.rawPubkey : '');
+      input.type = 'text';
       connect.classList.add('hidden');
       nip07.classList.add('hidden');
       disconnect.classList.remove('hidden');
+      setup.textContent = i18n.t('settings.accountManage');
+      // Backup is only meaningful when we hold the secret locally.
+      if (account.revealSecret()) backup.classList.remove('hidden');
+      else backup.classList.add('hidden');
+      const sourceLabel = i18n.t('account.source.' + (acc.source || 'npub'));
       status.innerHTML = `
         <div class="account-status-ok">● ${i18n.t('settings.accountConnected')}</div>
         <div class="account-status-line">${escapeHtml(acc.displayName)}</div>
-        <div class="account-status-line">${i18n.t('settings.accountHint')}</div>`;
+        <div class="account-status-line">${escapeHtml(sourceLabel)}</div>`;
     } else {
       input.value = '';
+      input.type = 'text';
       connect.classList.remove('hidden');
       nip07.classList.remove('hidden');
       disconnect.classList.add('hidden');
+      setup.textContent = i18n.t('settings.accountSetup');
+      backup.classList.add('hidden');
       status.innerHTML = `<div class="account-status-muted">${i18n.t('settings.accountOffline')}</div>`;
     }
   },
@@ -150,9 +204,55 @@ export const settings = {
   },
 
   _disconnectAccount() {
-    account.disconnect();
-    bus.emit('toast', i18n.t('toast.accountDisconnected'));
-    this.renderAccount();
+    const acc = account.current();
+    const holdsSecret = !!account.revealSecret();
+    // Losing a key-backed account is recoverable only if the user has the
+    // nsec backed up — surface that in the dialog.
+    const message = holdsSecret && acc?.source === 'nsec'
+      ? i18n.t('account.disconnectWarn')
+      : i18n.t('settings.accountDisconnect');
+    dialog.confirm({
+      kind: 'danger',
+      destructiveDanger: true,
+      title: i18n.t('settings.accountDisconnect'),
+      message,
+      detail: i18n.t('account.disconnectDetail'),
+      confirmText: i18n.t('settings.accountDisconnect'),
+    }).then((ok) => {
+      if (!ok) return;
+      account.disconnect();
+      bus.emit('toast', i18n.t('toast.accountDisconnected'));
+      this.renderAccount();
+    });
+  },
+
+  /** Show the stored private key again so the user can re-back it up. */
+  async _backupKey() {
+    const nsec = account.revealSecret();
+    if (!nsec) {
+      bus.emit('toast', i18n.t('account.noBackup'));
+      return;
+    }
+    const ok = await dialog.confirm({
+      kind: 'warn',
+      title: i18n.t('account.backupTitle'),
+      message: i18n.t('account.backupReveal'),
+      detail: i18n.t('account.backupRevealDetail'),
+      confirmText: i18n.t('account.reveal'),
+      cancelText: i18n.t('dialog.cancel'),
+    });
+    if (!ok) return;
+    await dialog.alert({
+      title: i18n.t('account.yourKey'),
+      message: nsec,
+      detail: i18n.t('account.backupDesc'),
+      confirmText: i18n.t('account.done'),
+    });
+    // Best-effort clipboard copy with a toast acknowledgement.
+    try {
+      await navigator.clipboard.writeText(nsec);
+      bus.emit('toast', i18n.t('account.copied'));
+    } catch {}
   },
 
   /* ---------- Relays ---------- */
@@ -212,7 +312,7 @@ export const settings = {
     row = document.createElement('div');
     row.className = 'relay-add-row';
     row.innerHTML = `
-      <input type="text" placeholder="${i18n.t('relays.placeholder')}" />
+      <input type="text" class="text-input" placeholder="${i18n.t('relays.placeholder')}" />
       <button class="ghost-btn" data-add-confirm>${i18n.t('relays.add')}</button>`;
     wrap.appendChild(row);
     const input = row.querySelector('input');
@@ -268,9 +368,20 @@ export const settings = {
   },
 
   _reset() {
-    if (!confirm(i18n.t('confirm.reset'))) return;
-    store.clearAll();
-    location.reload();
+    dialog.confirmTyped({
+      kind: 'danger',
+      destructiveDanger: true,
+      title: i18n.t('settings.reset'),
+      message: i18n.t('confirm.reset'),
+      detail: i18n.t('confirm.resetDetail'),
+      requiresText: true,
+      requireMatch: i18n.t('confirm.resetMatch'),
+      confirmText: i18n.t('settings.reset'),
+    }).then((ok) => {
+      if (!ok) return;
+      store.clearAll();
+      location.reload();
+    });
   },
 };
 
