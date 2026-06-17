@@ -12,6 +12,7 @@ import { editor } from './features/editor.js';
 import { sidebar } from './ui/sidebar.js';
 import { noteList } from './ui/notelist.js';
 import { settings } from './ui/settings.js';
+import { accountModal } from './ui/account.js';
 import { bus } from './core/eventbus.js';
 
 async function boot() {
@@ -30,6 +31,7 @@ async function boot() {
   noteList.init();
   editor.init();
   settings.init();
+  accountModal.init();
 
   // 5. Initial render.
   sidebar.render();

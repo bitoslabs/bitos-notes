@@ -5,15 +5,23 @@
  * notes domain; opening a note is announced on the bus.
  */
 
-import { notes } from '../features/notes.js';
+import { notes, stripHtml } from '../features/notes.js';
 import { sidebar } from './sidebar.js';
 import { i18n } from '../core/i18n.js';
 import { bus } from '../core/eventbus.js';
 import { store } from '../core/store.js';
+import * as popup from './popup.js';
+import * as dialog from './dialog.js';
 
 const $ = (id) => document.getElementById(id);
 let activeNoteId = null;
 let search = '';
+
+const SORT_OPTIONS = [
+  { id: 'updated', labelKey: 'sort.dateUpdated' },
+  { id: 'created', labelKey: 'sort.dateCreated' },
+  { id: 'title',   labelKey: 'sort.title' },
+];
 
 export const noteList = {
   get activeId() { return activeNoteId; },
@@ -23,6 +31,7 @@ export const noteList = {
     $('delete-btn').addEventListener('click', () => this._onDelete());
     $('pin-btn').addEventListener('click', () => this._onPin());
     $('share-btn').addEventListener('click', () => this._onShare());
+    $('sort-btn').addEventListener('click', (e) => this._showSortMenu(e.currentTarget));
 
     $('notes-list').addEventListener('click', (e) => {
       // Empty-state quick-create: clicking the hint creates a note.
@@ -119,10 +128,41 @@ export const noteList = {
     bus.emit('toast', i18n.t('toast.noteCreated'));
   },
 
-  _onDelete() {
+  async _onDelete() {
     if (!activeNoteId) return;
-    const inTrash = notes.find(activeNoteId)?.folder === 'deleted';
-    if (inTrash && !confirm(i18n.t('confirm.deleteForever'))) return;
+    const n = notes.find(activeNoteId);
+    if (!n) return;
+    const inTrash = n.folder === 'deleted';
+
+    const hasTitle   = !!(n.title && n.title.trim());
+    const hasBody    = !!(n.body && stripHtml(n.body).trim());
+    const hasCheck   = !!(n.checklist && n.checklist.some(i => i && i.t && i.t.trim()));
+    const isEmpty    = !hasTitle && !hasBody && !hasCheck;
+
+    if (inTrash) {
+      // Permanent deletion from the trash — always confirm.
+      const ok = await dialog.confirm({
+        kind: 'danger',
+        destructiveDanger: true,
+        title: i18n.t('confirm.deleteForever'),
+        message: i18n.t('confirm.deleteForever'),
+        detail: i18n.t('confirm.deleteForeverDetail'),
+        confirmText: i18n.t('editor.delete'),
+      });
+      if (!ok) return;
+    } else if (!isEmpty) {
+      // Non-empty note — give the user one easy safety check.
+      const ok = await dialog.confirm({
+        kind: 'danger',
+        destructiveDanger: true,
+        title: i18n.t('editor.delete'),
+        message: i18n.t('confirm.deleteNote', { title: n.title?.trim() || i18n.t('notes.untitled') }),
+        detail: i18n.t('confirm.deleteNoteDetail'),
+        confirmText: i18n.t('editor.delete'),
+      });
+      if (!ok) return;
+    }
+    // Empty notes delete silently — no friction for clearing drafts.
     notes.remove(activeNoteId);
     activeNoteId = null;
     this.render();
@@ -148,6 +188,24 @@ export const noteList = {
     const url = `${location.origin}/#/n/${n.id}`;
     navigator.clipboard?.writeText(url).catch(() => {});
     bus.emit('toast', i18n.t('toast.shared'));
+  },
+
+  /** Show the Sort By menu (macOS Notes style). */
+  _showSortMenu(anchor) {
+    const current = notes.sortMode;
+    const body = [
+      popup.header(i18n.t('sort.menu')),
+      ...SORT_OPTIONS.map(o =>
+        popup.item({ id: o.id, label: i18n.t(o.labelKey), checked: current === o.id })
+      ),
+    ];
+    popup.open(anchor, body, (id) => {
+      if (!SORT_OPTIONS.some(o => o.id === id) || id === current) return;
+      notes.sortMode = id;
+      this.render();
+      const opt = SORT_OPTIONS.find(o => o.id === id);
+      bus.emit('toast', i18n.t('sort.toast', { mode: i18n.t(opt.labelKey) }));
+    });
   },
 };
 

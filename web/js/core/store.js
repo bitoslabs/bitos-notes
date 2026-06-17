@@ -50,7 +50,7 @@ export const store = {
 
   /* ---- Preferences ---- */
   getPrefs() {
-    return read(KEYS.prefs) ?? { lang: null, theme: 'system', lastFolder: 'all', lastNote: null };
+    return read(KEYS.prefs) ?? { lang: null, theme: 'system', lastFolder: 'all', lastNote: null, sort: 'updated' };
   },
   setPrefs(patch) {
     const next = { ...this.getPrefs(), ...patch };
