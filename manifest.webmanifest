@@ -1,0 +1,26 @@
+{
+  "name": "BitOS Notes",
+  "short_name": "Notes",
+  "description": "Local-first notes synced via Nostr.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "lang": "en",
+  "dir": "auto",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./icon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "New note",
+      "short_name": "New",
+      "url": "./index.html?action=new",
+      "icons": [{ "src": "./icon.svg", "sizes": "any" }]
+    }
+  ]
+}

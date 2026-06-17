@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Notes</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['-apple-system','BlinkMacSystemFont','SF Pro Text','SF Pro Display','Segoe UI','Roboto','Helvetica Neue','Arial','sans-serif'],
+        },
+        colors: {
+          notes: {
+            yellow: '#FFCC00',
+            'yellow-soft': '#FFE680',
+            sidebar: '#ECECEC',
+            'sidebar-dark': '#2A2A2A',
+            toolbar: '#F6F6F6',
+            'toolbar-dark': '#1F1F1F',
+            ink: '#1D1D1F',
+            'ink-soft': '#6E6E73',
+            divider: '#D8D8D8',
+            'divider-dark': '#3A3A3A',
+            red: '#FF3B30',
+            blue: '#007AFF',
+            green: '#34C759',
+          }
+        }
+      }
+    }
+  }
+</script>
+<style>
+  html, body { height: 100%; }
+  body { -webkit-font-smoothing: antialiased; }
+  /* scrollbars — subtle, mac-like */
+  .scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,.18); border-radius: 8px; }
+  .dark .scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.18); }
+  .scroll::-webkit-scrollbar-track { background: transparent; }
+  /* nice text rendering for editor */
+  [contenteditable]:empty:before { content: attr(data-placeholder); color: #A1A1A6; }
+  [contenteditable]:focus { outline: none; }
+  /* slide transitions on mobile */
+  .pane { transition: transform .28s cubic-bezier(.4,0,.2,1); }
+  @media (max-width: 767px){
+    .pane-list.is-hidden { transform: translateX(-100%); }
+    .pane-editor.is-hidden { transform: translateX(100%); }
+  }
+  .dot { width: 10px; height: 10px; border-radius: 9999px; }
+  /* check */
+  input[type=checkbox].apple { appearance:none; width:18px; height:18px; border-radius:5px; border:2px solid #C7C7CC; position:relative; flex:0 0 auto; }
+  input[type=checkbox].apple:checked { background:#007AFF; border-color:#007AFF; }
+  input[type=checkbox].apple:checked:after { content:""; position:absolute; left:4px; top:1px; width:5px; height:9px; border:solid white; border-width:0 2px 2px 0; transform:rotate(45deg); }
+</style>
+</head>
+<body class="bg-neutral-300 dark:bg-black text-notes-ink dark:text-neutral-100 font-sans select-none overflow-hidden">
+
+<!-- ============ APP SHELL ============ -->
+<div id="app" class="h-screen w-screen flex bg-white dark:bg-neutral-900">
+
+  <!-- ===== PANE 1 · FOLDERS SIDEBAR ===== -->
+  <aside id="pane-folders"
+         class="pane w-[260px] flex-none bg-notes-sidebar dark:bg-notes-sidebar-dark border-r border-notes-divider dark:border-notes-divider-dark flex flex-col">
+    <!-- traffic lights / spacer for mac title bar -->
+    <div class="h-11 flex items-center px-4 gap-2">
+      <span class="dot bg-[#FF5F57]"></span>
+      <span class="dot bg-[#FEBC2E]"></span>
+      <span class="dot bg-[#28C840]"></span>
+    </div>
+
+    <div class="px-3 pb-2 flex items-center justify-between">
+      <h1 class="text-lg font-bold">Folders</h1>
+      <div class="flex items-center gap-1">
+        <button id="new-folder-btn" class="w-7 h-7 grid place-items-center rounded-md hover:bg-black/10 dark:hover:bg-white/10 text-notes-ink-soft" title="New folder">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v6M9 14h6"/></svg>
+        </button>
+        <button id="theme-toggle" class="w-7 h-7 grid place-items-center rounded-md hover:bg-black/10 dark:hover:bg-white/10 text-notes-ink-soft dark:text-neutral-400" title="Toggle theme">
+          <svg class="dark:hidden" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg>
+          <svg class="hidden dark:block" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- search -->
+    <div class="px-3 pb-2">
+      <div class="relative">
+        <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 text-notes-ink-soft" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
+        <input id="search-input" type="text" placeholder="Search"
+               class="w-full bg-black/5 dark:bg-white/10 placeholder:text-notes-ink-soft text-sm rounded-md py-1.5 pl-8 pr-3 focus:outline-none focus:ring-2 focus:ring-notes-blue/40" />
+      </div>
+    </div>
+
+    <!-- folder list -->
+    <nav class="flex-1 overflow-y-auto scroll px-2 pb-3">
+      <ul id="folder-list" class="space-y-0.5 text-sm"></ul>
+    </nav>
+
+    <!-- footer account -->
+    <div class="border-t border-notes-divider dark:border-notes-divider-dark p-3 flex items-center gap-2">
+      <div class="w-7 h-7 rounded-full bg-gradient-to-br from-notes-yellow to-amber-500 grid place-items-center text-white text-xs font-bold">B</div>
+      <div class="leading-tight">
+        <div class="text-xs font-semibold">iCloud</div>
+        <div class="text-[10px] text-notes-ink-soft">BitOS@protonmail.com</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== PANE 2 · NOTES LIST ===== -->
+  <section id="pane-list"
+           class="pane w-[320px] flex-none bg-white/60 dark:bg-neutral-900/60 border-r border-notes-divider dark:border-notes-divider-dark flex flex-col">
+    <header class="h-11 flex items-center justify-between px-4 border-b border-notes-divider dark:border-notes-divider-dark">
+      <button id="mobile-back" class="md:hidden text-notes-blue text-sm flex items-center gap-1">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+        Folders
+      </button>
+      <h2 id="folder-title" class="font-bold text-[15px] md:flex-none">All iCloud</h2>
+      <button id="new-note-btn" class="w-8 h-8 grid place-items-center rounded-md text-notes-blue hover:bg-black/5 dark:hover:bg-white/10" title="New note">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+    </header>
+
+    <div id="notes-list" class="flex-1 overflow-y-auto scroll"></div>
+
+    <div id="note-count" class="text-center text-[11px] text-notes-ink-soft py-2 border-t border-notes-divider dark:border-notes-divider-dark"></div>
+  </section>
+
+  <!-- ===== PANE 3 · EDITOR ===== -->
+  <section id="pane-editor"
+           class="pane flex-1 flex flex-col bg-white dark:bg-neutral-900 min-w-0">
+    <header class="h-11 flex items-center justify-between px-4 border-b border-notes-divider dark:border-notes-divider-dark">
+      <button id="mobile-back-editor" class="md:hidden text-notes-blue text-sm flex items-center gap-1">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+        Notes
+      </button>
+      <div class="hidden md:flex items-center gap-1 text-notes-ink-soft">
+        <span class="text-xs" id="editor-date"></span>
+      </div>
+      <div class="flex items-center gap-1">
+        <button class="w-8 h-8 grid place-items-center rounded-md hover:bg-black/5 dark:hover:bg-white/10" title="Share" onclick="alert('Share note (mockup)')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></svg>
+        </button>
+        <button id="pin-btn" class="w-8 h-8 grid place-items-center rounded-md hover:bg-black/5 dark:hover:bg-white/10" title="Pin">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.7V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v6.7l2 2.3v2H7v-2z"/></svg>
+        </button>
+        <button id="delete-btn" class="w-8 h-8 grid place-items-center rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-notes-red" title="Delete">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- formatting toolbar -->
+    <div class="px-4 py-2 border-b border-notes-divider dark:border-notes-divider-dark flex items-center gap-1 text-notes-ink-soft overflow-x-auto scroll">
+      <button data-cmd="title" class="tool" title="Title style">Aa</button>
+      <span class="w-px h-5 bg-notes-divider dark:bg-notes-divider-dark mx-1"></span>
+      <button data-cmd="bold" class="tool font-bold" title="Bold">B</button>
+      <button data-cmd="italic" class="tool italic" title="Italic">I</button>
+      <button data-cmd="underline" class="tool underline" title="Underline">U</button>
+      <span class="w-px h-5 bg-notes-divider dark:bg-notes-divider-dark mx-1"></span>
+      <button data-cmd="ul" class="tool" title="Bulleted list">•</button>
+      <button data-cmd=" checklist" class="tool" title="Checklist">☑</button>
+      <button data-cmd="ol" class="tool" title="Numbered list">1.</button>
+      <span class="w-px h-5 bg-notes-divider dark:bg-notes-divider-dark mx-1"></span>
+      <button data-cmd="checkbox" class="tool" title="Insert checklist item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></svg>
+      </button>
+    </div>
+
+    <!-- content -->
+    <div id="editor-empty" class="flex-1 grid place-items-center text-notes-ink-soft text-sm hidden">
+      <div class="text-center">
+        <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-notes-yellow flex items-center justify-center shadow-inner">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>
+        </div>
+        <p class="font-medium">No Note Selected</p>
+        <p class="text-xs mt-1">Tap <span class="text-notes-blue">+</span> to create one.</p>
+      </div>
+    </div>
+
+    <div id="editor-wrap" class="flex-1 overflow-y-auto scroll">
+      <div class="max-w-2xl mx-auto px-6 md:px-10 py-8">
+        <h2 id="editor-title" contenteditable="true" data-placeholder="Title"
+            class="text-3xl font-bold mb-3 outline-none"></h2>
+        <div id="editor-meta" class="text-xs text-notes-ink-soft mb-5"></div>
+        <div id="editor-body" contenteditable="true" data-placeholder="Start writing…"
+             class="text-[15px] leading-relaxed outline-none min-h-[50vh] space-y-2"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<style>
+  .tool { min-width:32px; height:30px; padding:0 8px; border-radius:6px; font-size:13px; display:inline-flex; align-items:center; justify-content:center; }
+  .tool:hover { background: rgba(0,0,0,.06); }
+  .dark .tool:hover { background: rgba(255,255,255,.1); }
+  .note-card { cursor:pointer; }
+  .note-card.active { background: rgba(255,204,0,.18); }
+  .dark .note-card.active { background: rgba(255,204,0,.12); }
+  .folder-row.active { background: rgba(0,0,0,.07); }
+  .dark .folder-row.active { background: rgba(255,255,255,.1); }
+</style>
+
+<script>
+/* ============ DATA (mock) ============ */
+const folders = [
+  { id:'all',     name:'All iCloud',  icon:'☁️', system:true },
+  { id:'notes',   name:'Notes',       icon:'📝', system:true },
+  { id:'work',    name:'Work',        icon:'💼' },
+  { id:'ideas',   name:'Ideas',       icon:'💡' },
+  { id:'personal',name:'Personal',    icon:'🏡' },
+  { id:'recipes', name:'Recipes',     icon:'🍳' },
+  { id:'deleted', name:'Recently Deleted', icon:'🗑️', system:true },
+];
+
+let notes = [
+  { id:1, folder:'notes', pinned:true, date:'Today 9:24 AM', ts:Date.now()-1000*60*30, title:'Welcome to Notes ✨', body:'This is a mockup of the native Notes app — three panes on macOS, stack navigation on iOS.<br><br>Tap any note to edit, hit <b>+</b> to add a new one, use the folder list to jump around.', checklist:[] },
+  { id:2, folder:'work', pinned:true, date:'Today 8:10 AM', ts:Date.now()-1000*60*90, title:'Q3 Roadmap', body:'Ship Notes MVP across all 5 platforms.<br><br><b>Focus:</b><br>• Flutter + Isar local-first<br>• Nostr sync (NIP-44 encrypted)<br>• super_editor for rich text', checklist:[
+    {t:'Lock platform decisions', d:true},
+    {t:'Scaffold Flutter project', d:true},
+    {t:'Implement Nostr RelayPool', d:false},
+    {t:'Build editor + autosave', d:false},
+  ] },
+  { id:3, folder:'ideas', pinned:false, date:'Yesterday', ts:Date.now()-1000*60*60*26, title:'App ideas 💭', body:'- Local-first journaling app<br>- Nostr-powered microblog client<br>- Encrypted password vault<br>- Pomodoro timer with streaks', checklist:[] },
+  { id:4, folder:'personal', pinned:false, date:'Yesterday', ts:Date.now()-1000*60*60*30, title:'Weekend plan', body:'Saturday: hike at Marin Headlands 🥾<br>Sunday: brunch + code review', checklist:[
+    {t:'Buy hiking shoes', d:false},
+    {t:'Charge camera batteries', d:true},
+  ] },
+  { id:5, folder:'recipes', pinned:false, date:'Mon', ts:Date.now()-1000*60*60*72, title:'Carbonara 🍝', body:'<b>Ingredients</b><br>200g spaghetti<br>2 eggs + 1 yolk<br>100g pancetta<br>Pecorino + black pepper<br><br>Cook pasta, fry pancetta, mix egg+cheese off heat. Boom.', checklist:[] },
+  { id:6, folder:'notes', pinned:false, date:'Mon', ts:Date.now()-1000*60*60*80, title:'Books to read 📚', body:'1. The Pragmatic Programmer<br>2. Designing Data-Intensive Apps<br>3. Cracking the Coding Interview', checklist:[] },
+  { id:7, folder:'work', pinned:false, date:'Sun', ts:Date.now()-1000*60*60*100, title:'Meeting notes — sync architecture', body:'Reviewed NIP-44 vs NIP-04. Going with <b>NIP-44</b> for authenticated encryption.<br><br>Kind 30078 (parameterized replaceable) is the right home for app-private notes.', checklist:[] },
+  { id:8, folder:'ideas', pinned:false, date:'Sun', ts:Date.now()-1000*60*60*120, title:'Nostr relay ideas', body:'Run our own branded relay for reliability. Blossom server for attachments.', checklist:[] },
+];
+
+/* ============ STATE ============ */
+let currentFolder = 'all';
+let currentNoteId = null;
+let searchQuery = '';
+
+/* ============ RENDER FOLDERS ============ */
+function renderFolders(){
+  const list = document.getElementById('folder-list');
+  list.innerHTML = folders.map(f => {
+    const count = f.id==='deleted'
+      ? notes.filter(n=>n.folder==='deleted').length
+      : f.id==='all'
+        ? notes.filter(n=>n.folder!=='deleted').length
+        : notes.filter(n=>n.folder===f.id && n.folder!=='deleted').length;
+    return `
+      <li>
+        <button data-folder="${f.id}"
+          class="folder-row w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left ${currentFolder===f.id?'active':''} ${f.system?'text-notes-ink dark:text-neutral-100':'text-notes-ink dark:text-neutral-200'}">
+          <span class="text-base leading-none">${f.icon}</span>
+          <span class="flex-1 truncate ${f.system?'font-semibold':''}">${f.name}</span>
+          <span class="text-[11px] text-notes-ink-soft">${count}</span>
+        </button>
+      </li>`;
+  }).join('');
+  list.querySelectorAll('[data-folder]').forEach(btn=>{
+    btn.addEventListener('click',()=>selectFolder(btn.dataset.folder));
+  });
+}
+
+/* ============ RENDER NOTES LIST ============ */
+function visibleNotes(){
+  let list = notes.filter(n=>{
+    if(currentFolder==='all') return n.folder!=='deleted';
+    return n.folder===currentFolder;
+  });
+  if(searchQuery.trim()){
+    const q = searchQuery.toLowerCase();
+    list = list.filter(n => (n.title+' '+n.body.replace(/<[^>]+>/g,' ')).toLowerCase().includes(q));
+  }
+  return list;
+}
+function notePreview(n){
+  const body = n.body.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+  return body ? body.slice(0,80) : 'No additional text';
+}
+function renderNotes(){
+  const wrap = document.getElementById('notes-list');
+  const list = visibleNotes().sort((a,b)=> b.pinned-a.pinned || b.ts-a.ts);
+  const pinned = list.filter(n=>n.pinned);
+  const rest   = list.filter(n=>!n.pinned);
+
+  const card = (n)=>`
+    <button data-note="${n.id}"
+      class="note-card w-full text-left px-4 py-2.5 border-b border-notes-divider dark:border-notes-divider-dark ${currentNoteId===n.id?'active':''}">
+      <div class="flex items-start gap-2">
+        <span class="flex-1 min-w-0">
+          <span class="flex items-center gap-1.5">
+            ${n.pinned?'<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" class="text-notes-yellow flex-shrink-0"><path d="M12 17v5l-2-1v-4L5 12V7h14v5z"/></svg>':''}
+          <span class="font-semibold text-[14px] truncate block">${n.title||'New Note'}</span>
+          </span>
+          <span class="text-[12px] text-notes-ink-soft block truncate mt-0.5">${notePreview(n)}</span>
+          <span class="text-[11px] text-notes-ink-soft/80 block mt-1">${n.date}</span>
+        </span>
+      </div>
+    </button>`;
+
+  let html='';
+  if(pinned.length && !searchQuery){
+    html += `<div class="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-notes-ink-soft">📌 Pinned</div>`;
+    html += pinned.map(card).join('');
+    if(rest.length) html += `<div class="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-notes-ink-soft">All Notes</div>`;
+  }
+  html += rest.map(card).join('');
+  if(!list.length){
+    html = `<div class="px-4 py-10 text-center text-sm text-notes-ink-soft">No notes here yet.<br>Tap <span class="text-notes-blue font-semibold">+</span> to create one.</div>`;
+  }
+  wrap.innerHTML = html;
+  document.getElementById('note-count').textContent = `${list.length} ${list.length===1?'Note':'Notes'}`;
+
+  wrap.querySelectorAll('[data-note]').forEach(btn=>{
+    btn.addEventListener('click',()=>openNote(+btn.dataset.note));
+  });
+}
+
+/* ============ SELECT / OPEN ============ */
+function selectFolder(id){
+  currentFolder = id;
+  currentNoteId = null;
+  document.getElementById('folder-title').textContent = folders.find(f=>f.id===id).name;
+  renderFolders();
+  renderNotes();
+  showEditorEmpty(true);
+  // mobile: show list pane
+  document.getElementById('pane-list').classList.remove('is-hidden');
+  document.getElementById('pane-editor').classList.add('is-hidden');
+}
+function openNote(id){
+  const n = notes.find(x=>x.id===id);
+  if(!n) return;
+  currentNoteId = id;
+  document.getElementById('editor-title').textContent = n.title;
+  document.getElementById('editor-meta').textContent = n.date + (n.pinned?'  ·  📌 Pinned':'');
+  document.getElementById('editor-date').textContent = n.date;
+  const body = document.getElementById('editor-body');
+  body.innerHTML = '';
+  if(n.checklist && n.checklist.length){
+    const ul = document.createElement('div'); ul.className='space-y-2 mb-3';
+    n.checklist.forEach((item,i)=>{
+      const row = document.createElement('label'); row.className='flex items-start gap-2 cursor-pointer';
+      row.innerHTML = `<input type="checkbox" class="apple mt-0.5" ${item.d?'checked':''}><span class="${item.d?'line-through text-notes-ink-soft':''}">${item.t}</span>`;
+      row.querySelector('input').addEventListener('change',e=>{ n.checklist[i].d = e.target.checked; renderNotes(); row.querySelector('span').classList.toggle('line-through',e.target.checked); row.querySelector('span').classList.toggle('text-notes-ink-soft',e.target.checked); });
+      ul.appendChild(row);
+    });
+    body.appendChild(ul);
+  }
+  const p = document.createElement('div'); p.innerHTML = n.body; body.appendChild(p);
+
+  showEditorEmpty(false);
+  renderNotes();
+  // mobile: show editor pane
+  document.getElementById('pane-list').classList.add('is-hidden');
+  document.getElementById('pane-editor').classList.remove('is-hidden');
+  // update pin button icon state
+  updatePinBtn(n.pinned);
+}
+function showEditorEmpty(empty){
+  document.getElementById('editor-empty').classList.toggle('hidden', !empty);
+  document.getElementById('editor-wrap').classList.toggle('hidden', empty);
+}
+function updatePinBtn(pinned){
+  const btn = document.getElementById('pin-btn');
+  btn.style.color = pinned ? '#FFCC00' : '';
+}
+
+/* ============ NEW NOTE ============ */
+document.getElementById('new-note-btn').addEventListener('click',()=>{
+  const folder = currentFolder==='all' || currentFolder==='deleted' ? 'notes' : currentFolder;
+  const now = new Date();
+  const date = 'Today ' + now.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
+  const n = { id: Date.now(), folder, pinned:false, date, ts:Date.now(), title:'', body:'', checklist:[] };
+  notes.unshift(n);
+  renderFolders();
+  renderNotes();
+  openNote(n.id);
+  document.getElementById('editor-title').focus();
+});
+
+/* ============ EDIT HANDLERS (live update) ============ */
+document.getElementById('editor-title').addEventListener('input',()=>{
+  const n = notes.find(x=>x.id===currentNoteId); if(!n) return;
+  n.title = document.getElementById('editor-title').textContent.trim();
+  renderNotes();
+});
+document.getElementById('editor-body').addEventListener('input',()=>{
+  const n = notes.find(x=>x.id===currentNoteId); if(!n) return;
+  // store last child div as body (skip checklist block which is first child if exists)
+  const body = document.getElementById('editor-body');
+  n.body = body.lastElementChild ? body.lastElementChild.innerHTML : body.innerHTML;
+  renderNotes();
+});
+
+/* ============ PIN / DELETE ============ */
+document.getElementById('pin-btn').addEventListener('click',()=>{
+  const n = notes.find(x=>x.id===currentNoteId); if(!n) return;
+  n.pinned = !n.pinned;
+  updatePinBtn(n.pinned);
+  document.getElementById('editor-meta').textContent = n.date + (n.pinned?'  ·  📌 Pinned':'');
+  renderNotes();
+});
+document.getElementById('delete-btn').addEventListener('click',()=>{
+  if(!currentNoteId) return;
+  const n = notes.find(x=>x.id===currentNoteId); if(!n) return;
+  if(currentFolder==='deleted'){ notes = notes.filter(x=>x.id!==currentNoteId); }
+  else { n.folder='deleted'; }
+  currentNoteId = null;
+  renderFolders(); renderNotes(); showEditorEmpty(true);
+  document.getElementById('pane-list').classList.remove('is-hidden');
+  document.getElementById('pane-editor').classList.add('is-hidden');
+});
+
+/* ============ NEW FOLDER ============ */
+document.getElementById('new-folder-btn').addEventListener('click',()=>{
+  const name = prompt('New folder name:');
+  if(!name) return;
+  const icons = ['📁','🗂️','📦','🔖','⭐'];
+  folders.splice(folders.length-1,0,{ id:'f'+Date.now(), name, icon:icons[Math.floor(Math.random()*icons.length)] });
+  renderFolders();
+});
+
+/* ============ SEARCH ============ */
+document.getElementById('search-input').addEventListener('input',e=>{
+  searchQuery = e.target.value; renderNotes();
+});
+
+/* ============ TOOLBAR ============ */
+document.querySelectorAll('[data-cmd]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const cmd = btn.dataset.cmd.trim();
+    document.execCommand?.(cmd, false, null);
+    document.getElementById('editor-body').focus();
+  });
+});
+
+/* ============ THEME ============ */
+document.getElementById('theme-toggle').addEventListener('click',()=>{
+  document.documentElement.classList.toggle('dark');
+  localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark':'light';
+});
+if(localStorage.theme==='dark' || (!localStorage.theme && matchMedia('(prefers-color-scheme: dark)').matches)){
+  document.documentElement.classList.add('dark');
+}
+
+/* ============ MOBILE BACK ============ */
+document.getElementById('mobile-back').addEventListener('click',()=>{
+  document.getElementById('pane-folders').style.transform = 'translateX(0)';
+});
+document.getElementById('mobile-back-editor').addEventListener('click',()=>{
+  document.getElementById('pane-list').classList.remove('is-hidden');
+  document.getElementById('pane-editor').classList.add('is-hidden');
+});
+
+/* on mobile default: show folders only; open folders → list; open note → editor */
+function applyMobileLayout(){
+  const mobile = window.innerWidth < 768;
+  const foldersPane = document.getElementById('pane-folders');
+  const listPane = document.getElementById('pane-list');
+  const editorPane = document.getElementById('pane-editor');
+  if(mobile){
+    foldersPane.style.position='fixed'; foldersPane.style.top='0'; foldersPane.style.bottom='0'; foldersPane.style.left='0'; foldersPane.style.zIndex='30';
+    foldersPane.style.transform = currentFolder!=='all' || currentNoteId ? 'translateX(-100%)' : 'translateX(0)';
+  } else {
+    foldersPane.style.position=''; foldersPane.style.transform='';
+    listPane.classList.remove('is-hidden'); editorPane.classList.remove('is-hidden');
+  }
+}
+// tweak folder click for mobile: hide folders pane after picking
+const origSelect = selectFolder;
+selectFolder = function(id){
+  currentFolder = id; currentNoteId = null;
+  document.getElementById('folder-title').textContent = folders.find(f=>f.id===id).name;
+  renderFolders(); renderNotes(); showEditorEmpty(true);
+  const mobile = window.innerWidth < 768;
+  if(mobile){ document.getElementById('pane-folders').style.transform='translateX(-100%)'; document.getElementById('pane-list').classList.remove('is-hidden'); document.getElementById('pane-editor').classList.add('is-hidden'); }
+};
+document.getElementById('mobile-back').addEventListener('click',()=>{
+  document.getElementById('pane-folders').style.transform='translateX(0)';
+});
+window.addEventListener('resize', applyMobileLayout);
+
+/* ============ INIT ============ */
+renderFolders();
+renderNotes();
+showEditorEmpty(true);
+applyMobileLayout();
+</script>
+</body>
+</html>
