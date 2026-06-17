@@ -6,12 +6,14 @@
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#1c1c1e" media="(prefers-color-scheme: dark)" />
   <meta name="description" content="BitOS Notes — local-first notes synced via Nostr." />
+  <meta name="application-name" content="Notes" />
   <title data-i18n="app.title">Notes</title>
 
   <!-- PWA -->
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="./icon.svg" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Notes" />
@@ -50,10 +52,10 @@
       <nav id="folder-list" class="folder-list scroll" aria-label="Folder list"></nav>
 
       <div class="account-bar">
-        <div class="avatar">B</div>
+        <div class="avatar" id="account-avatar">B</div>
         <div class="account-text">
-          <div class="account-label" data-i18n="account.icloud">iCloud</div>
-          <div class="account-email">BitOS@protonmail.com</div>
+          <div class="account-label" id="account-label" data-i18n="account.icloud">iCloud</div>
+          <div class="account-email" id="account-email">BitOS@protonmail.com</div>
         </div>
       </div>
     </aside>
@@ -66,9 +68,14 @@
           <span data-i18n="nav.folders">Folders</span>
         </button>
         <h2 id="folder-title" class="list-title">All iCloud</h2>
-        <button id="new-note-btn" class="icon-btn icon-btn-primary" data-i18n-title="notes.new" title="New note" aria-label="New note">
-          <svg viewBox="0 0 24 24" class="ico"><path d="M12 5v14M5 12h14"/></svg>
-        </button>
+        <div class="list-actions">
+          <button id="delete-btn" class="icon-btn icon-btn-danger" data-i18n-title="editor.delete" title="Delete" aria-label="Delete">
+            <svg viewBox="0 0 24 24" class="ico"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
+          <button id="new-note-btn" class="icon-btn icon-btn-primary" data-i18n-title="notes.new" title="New note" aria-label="New note">
+            <svg viewBox="0 0 24 24" class="ico"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+        </div>
       </header>
 
       <div id="notes-list" class="notes-list scroll"></div>
@@ -79,6 +86,7 @@
     <!-- ===== PANE 3 · EDITOR ===== -->
     <section id="pane-editor" class="pane pane-editor" aria-label="Editor">
       <header class="editor-head">
+
         <button id="back-notes" class="back-btn mobile-only" aria-label="Back to notes">
           <svg viewBox="0 0 24 24" class="ico"><path d="M15 18l-6-6 6-6"/></svg>
           <span data-i18n="nav.notes">Notes</span>
@@ -92,9 +100,6 @@
           </button>
           <button id="pin-btn" class="icon-btn" data-i18n-title="editor.pin" title="Pin" aria-label="Pin note">
             <svg viewBox="0 0 24 24" class="ico"><path d="M12 17v5"/><path d="M9 10.7V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v6.7l2 2.3v2H7v-2z"/></svg>
-          </button>
-          <button id="delete-btn" class="icon-btn icon-btn-danger" data-i18n-title="editor.delete" title="Delete" aria-label="Delete">
-            <svg viewBox="0 0 24 24" class="ico"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
           </button>
         </div>
       </header>
@@ -116,11 +121,13 @@
       </div>
 
       <div id="editor-empty" class="editor-empty">
-        <div class="empty-icon">
-          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>
-        </div>
-        <p class="empty-title" data-i18n="editor.emptyTitle">No Note Selected</p>
-        <p class="empty-sub"><span data-i18n="editor.emptySub">Tap</span> <span class="plus">+</span> <span data-i18n="editor.emptyCreate">to create one.</span></p>
+        <button id="editor-empty-create" class="empty-create" type="button">
+          <div class="empty-icon">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>
+          </div>
+          <p class="empty-title" data-i18n="editor.emptyTitle">No Note Selected</p>
+          <p class="empty-sub"><span data-i18n="editor.emptySub">Tap</span> <span class="plus">+</span> <span data-i18n="editor.emptyCreate">to create one.</span></p>
+        </button>
       </div>
 
       <div id="editor-wrap" class="editor-wrap scroll">
@@ -157,12 +164,23 @@
         <!-- Language -->
         <section class="settings-section">
           <h4 data-i18n="settings.language">Language</h4>
-          <div class="segmented wrap" id="lang-segmented" role="radiogroup">
-            <button data-lang="en">English</button>
-            <button data-lang="fr">Français</button>
-            <button data-lang="es">Español</button>
-            <button data-lang="ar">العربية</button>
+          <div class="lang-select-wrap">
+            <select id="lang-select" class="lang-select" aria-label="Language"></select>
+            <svg class="lang-select-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
           </div>
+        </section>
+
+        <!-- Account -->
+        <section class="settings-section">
+          <h4 data-i18n="settings.account">Nostr Account</h4>
+          <p class="section-desc" data-i18n="settings.accountDesc">Connect with an npub for read-only identity, or use nsec when private-key import is ready.</p>
+          <div class="account-form">
+            <input id="account-input" type="text" data-i18n-placeholder="settings.accountPlaceholder" placeholder="npub1... or nsec1..." autocomplete="off" />
+            <button id="account-connect-btn" class="ghost-btn" data-i18n="settings.accountConnect">Connect</button>
+            <button id="account-nip07-btn" class="ghost-btn" data-i18n="settings.accountNip07">Use Wallet</button>
+            <button id="account-disconnect-btn" class="ghost-btn danger hidden" data-i18n="settings.accountDisconnect">Disconnect</button>
+          </div>
+          <div id="account-status" class="account-status"></div>
         </section>
 
         <!-- Relays -->

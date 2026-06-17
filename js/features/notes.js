@@ -30,7 +30,7 @@ export const notes = {
       const q = search.toLowerCase();
       list = list.filter(n =>
         (n.title || '').toLowerCase().includes(q) ||
-        stripHtml(n.body).toLowerCase().includes(q)
+        noteText(n).toLowerCase().includes(q)
       );
     }
     // Sort: pinned first, then most-recently-updated.
@@ -98,7 +98,7 @@ export const notes = {
 
   /** Human-readable preview (first ~80 chars of body, no HTML). */
   preview(n) {
-    const text = stripHtml(n.body).replace(/\s+/g, ' ').trim();
+    const text = noteText(n).replace(/\s+/g, ' ').trim();
     return text ? text.slice(0, 80) : '';
   },
 
@@ -114,6 +114,15 @@ export function stripHtml(html) {
   const tmp = document.createElement('div');
   tmp.innerHTML = html || '';
   return (tmp.textContent || tmp.innerText || '').trim();
+}
+
+function noteText(note) {
+  const bodyText = stripHtml(note.body);
+  const checklistText = (note.checklist || [])
+    .map(item => item?.t || '')
+    .filter(Boolean)
+    .join(' ');
+  return [bodyText, checklistText].filter(Boolean).join(' ').trim();
 }
 
 function formatDate(ts) {

@@ -25,13 +25,20 @@ export const editor = {
   init() {
     // Live save on title/body edit.
     $('editor-title').addEventListener('input', () => this._scheduleSave());
-    $('editor-body').addEventListener('input', () => this._scheduleSave());
+    $('editor-title').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); this._focusStart($('editor-body')); }
+    });
+    $('editor-body').addEventListener('input', () => { this._cleanEmptyBody(); this._scheduleSave(); });
+    $('editor-body').addEventListener('keydown', (e) => this._onBodyKeydown(e));
 
     // Toolbar commands.
     document.querySelectorAll('[data-cmd]').forEach(btn => {
       btn.addEventListener('mousedown', (e) => e.preventDefault()); // keep selection
       btn.addEventListener('click', () => this.execCommand(btn.dataset.cmd));
     });
+
+    // Empty-state quick-create: clicking the placeholder creates a note.
+    $('editor-empty-create')?.addEventListener('click', () => bus.emit('quick:create'));
 
     // Re-apply placeholder language on locale change.
     bus.on('locale:changed', () => {
@@ -49,20 +56,15 @@ export const editor = {
     $('editor-date').textContent = notes.dateLabel(note);
 
     const body = $('editor-body');
-    body.innerHTML = '';
+    body.innerHTML = note.body || '';
 
-    // Checklist block (if any).
+    // Checklist block (if any) — placed at the top of the body.
     if (note.checklist?.length) {
       const block = document.createElement('div');
       block.className = 'checklist-block';
-      note.checklist.forEach((item, i) => block.appendChild(this._checkRow(item, i)));
-      body.appendChild(block);
+      note.checklist.forEach((item) => block.appendChild(this._checkRow(item)));
+      body.insertBefore(block, body.firstChild);
     }
-
-    // Body content.
-    const p = document.createElement('div');
-    p.innerHTML = note.body || '';
-    body.appendChild(p);
 
     this._showEmpty(false);
     this._setPinIcon(note.pinned);
@@ -101,54 +103,62 @@ export const editor = {
     $('editor-body').focus();
   },
 
-  /** Insert a new checkable row at the caret. */
+  /** Insert a new checklist row near the current caret, then focus its text. */
   insertChecklistRow() {
-    const row = this._checkRow({ t: '', d: false }, -1);
-    row.contentEditable = false;
-    // Make the text editable.
-    const span = row.querySelector('span');
-    span.contentEditable = true;
-    $('editor-body').focus();
-    const sel = window.getSelection();
-    if (sel.rangeCount) {
-      const range = sel.getRangeAt(0);
-      range.insertNode(row);
-      range.setStart(span, 0);
-      range.collapse(true);
-      sel.removeAllRanges(); sel.addRange(range);
+    const body = $('editor-body');
+    const row = this._checkRow({ t: '', d: false });
+    const currentRow = this._selectionChecklistRow();
+
+    if (currentRow) {
+      currentRow.after(row);
     } else {
-      $('editor-body').appendChild(row);
+      const block = document.createElement('div');
+      block.className = 'checklist-block';
+      this._insertNodeAtSelection(block);
+      block.appendChild(row);
     }
-    span.focus();
+
+    this._persistChecklist();
     this._scheduleSave();
+    this._focusStart(row.querySelector('.check-label'));
   },
 
-  /** Build a single checklist row (checkbox + text). */
-  _checkRow(item, index) {
-    const row = document.createElement('label');
+  /** Build a single checklist row (checkbox + editable label). */
+  _checkRow(item) {
+    const row = document.createElement('div');
     row.className = 'check-item' + (item.d ? ' done' : '');
-    row.dataset.noteField = 'checklist';
+
     const cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.checked = !!item.d;
-    const span = document.createElement('span');
-    span.textContent = item.t;
     cb.addEventListener('change', () => {
       row.classList.toggle('done', cb.checked);
+      this._applyCheckLabelState(label, cb.checked);
       this._persistChecklist();
+      this._scheduleSave();
     });
-    span.addEventListener('input', () => this._scheduleSave());
+
+    const label = document.createElement('input');
+    label.type = 'text';
+    label.value = item.t || '';
+    label.className = item.d ? 'check-label is-done' : 'check-label';
+    label.placeholder = '';
+    label.addEventListener('input', () => {
+      this._persistChecklist();
+      this._scheduleSave();
+    });
+    label.addEventListener('keydown', (e) => this._onChecklistLabelKeydown(e));
+    this._applyCheckLabelState(label, cb.checked);
+
     row.appendChild(cb);
-    row.appendChild(span);
+    row.appendChild(label);
     return row;
   },
 
   /** Read the checklist block (if present) into data. */
   _readChecklist() {
-    const block = $('editor-body').querySelector('.checklist-block');
-    if (!block) return [];
-    return [...block.querySelectorAll('.check-item')].map(row => ({
-      t: row.querySelector('span')?.textContent || '',
+    return [...$('editor-body').querySelectorAll('.check-item')].map(row => ({
+      t: row.querySelector('.check-label')?.value || '',
       d: row.querySelector('input')?.checked || false,
     }));
   },
@@ -156,6 +166,126 @@ export const editor = {
   _persistChecklist() {
     if (!currentId) return;
     notes.update(currentId, { checklist: this._readChecklist() });
+  },
+
+  _applyCheckLabelState(label, checked) {
+    if (!label) return;
+    label.classList.toggle('is-done', checked);
+    label.style.textDecoration = checked ? 'line-through' : 'none';
+    label.style.color = checked ? 'var(--text-secondary)' : '';
+  },
+
+  _selectionChecklistRow() {
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) return null;
+    const anchor = sel.anchorNode instanceof Element ? sel.anchorNode : sel.anchorNode?.parentElement;
+    return anchor?.closest?.('.check-item') || null;
+  },
+
+  _insertNodeAtSelection(node) {
+    const body = $('editor-body');
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) {
+      body.appendChild(node);
+      return;
+    }
+
+    const range = sel.getRangeAt(0);
+    const anchor = range.startContainer instanceof Element ? range.startContainer : range.startContainer.parentElement;
+    if (!anchor || !body.contains(anchor)) {
+      body.appendChild(node);
+      return;
+    }
+
+    range.collapse(true);
+    range.insertNode(node);
+  },
+
+  /** Enter / Backspace behaviour inside checklist rows (Apple Notes-style). */
+  _onBodyKeydown(e) {
+    if (e.target.closest?.('.check-item')) return;
+  },
+
+  _onChecklistLabelKeydown(e) {
+    const label = e.target.closest?.('.check-label');
+    if (!label) return;
+
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const row = label.parentElement;
+      if (!label.value.trim()) {
+        // Empty item → exit checklist into a body line.
+        const line = document.createElement('div');
+        line.innerHTML = '<br>';
+        row.closest('.checklist-block')?.after(line);
+        row.remove();
+        this._pruneEmptyBlock();
+        this._focusStart(line);
+      } else {
+        const next = this._checkRow({ t: '', d: false });
+        row.after(next);
+        this._focusStart(next.querySelector('.check-label'));
+      }
+      this._persistChecklist();
+      this._scheduleSave();
+    } else if (e.key === 'Backspace') {
+      if (label.selectionStart !== 0 || label.selectionEnd !== 0) return;
+      if (label.value.trim()) return;
+      e.preventDefault();
+      const row = label.parentElement;
+      const prevLabel = row.previousElementSibling?.querySelector('.check-label');
+      row.remove();
+      this._pruneEmptyBlock();
+      this._focusEnd(prevLabel || $('editor-body'));
+      this._persistChecklist();
+      this._scheduleSave();
+    }
+  },
+
+  /** Drop the checklist container once it holds no rows. */
+  _pruneEmptyBlock() {
+    $('editor-body').querySelectorAll('.checklist-block').forEach((block) => {
+      if (!block.querySelector('.check-item')) block.remove();
+    });
+  },
+
+  /** Clear stray <br>/empty wrappers so the :empty body placeholder can show. */
+  _cleanEmptyBody() {
+    const body = $('editor-body');
+    if (body.querySelector('.check-item')) return;
+    if (body.textContent.trim() || body.querySelector('img,hr')) return;
+    if (body.innerHTML !== '') body.innerHTML = '';
+  },
+
+  _focusStart(el) {
+    if (!el) return;
+    el.focus();
+    if (typeof el.setSelectionRange === 'function') {
+      el.setSelectionRange(0, 0);
+      return;
+    }
+    const sel = window.getSelection();
+    if (!sel) return;
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  },
+
+  _focusEnd(el) {
+    el.focus();
+    if (typeof el.setSelectionRange === 'function') {
+      const end = el.value.length;
+      el.setSelectionRange(end, end);
+      return;
+    }
+    const sel = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
   },
 
   /** Debounced save of title + body + checklist. */
@@ -174,7 +304,7 @@ export const editor = {
   /** Body = everything in editor-body EXCEPT the checklist block. */
   _readBodyHtml() {
     const clone = $('editor-body').cloneNode(true);
-    clone.querySelector('.checklist-block')?.remove();
+    clone.querySelectorAll('.checklist-block').forEach(block => block.remove());
     return clone.innerHTML;
   },
 

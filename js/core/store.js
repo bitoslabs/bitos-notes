@@ -10,6 +10,7 @@ const KEYS = {
   notes: PREFIX + 'notes',
   folders: PREFIX + 'folders',
   relays: PREFIX + 'relays',
+  account: PREFIX + 'account',
   prefs: PREFIX + 'prefs',     // { lang, theme, lastFolder, lastNote }
 };
 
@@ -21,7 +22,7 @@ function read(key) {
     return raw ? JSON.parse(raw) : null;
   } catch {
     return memory[key] ?? null;
-  }
+  } 
 }
 
 function write(key, value) {
@@ -42,6 +43,10 @@ export const store = {
   /* ---- Relays ---- */
   getRelays() { return read(KEYS.relays) ?? []; },
   setRelays(relays) { write(KEYS.relays, relays); },
+
+  /* ---- Account ---- */
+  getAccount() { return read(KEYS.account); },
+  setAccount(account) { write(KEYS.account, account); },
 
   /* ---- Preferences ---- */
   getPrefs() {

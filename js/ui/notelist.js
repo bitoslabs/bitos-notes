@@ -25,6 +25,8 @@ export const noteList = {
     $('share-btn').addEventListener('click', () => this._onShare());
 
     $('notes-list').addEventListener('click', (e) => {
+      // Empty-state quick-create: clicking the hint creates a note.
+      if (e.target.closest('.notes-empty-create')) return this._onNew();
       const card = e.target.closest('[data-note]');
       if (card) this.select(+card.dataset.note || card.dataset.note);
     });
@@ -33,6 +35,24 @@ export const noteList = {
     bus.on('notes:changed',   () => this.render());
     bus.on('folder:selected', () => { activeNoteId = null; this.render(); });
     bus.on('locale:changed',  () => this.render());
+
+    // Centralised quick-create: any UI surface can emit `quick:create`
+    // (empty states, keyboard shortcut) and it routes here.
+    bus.on('quick:create', () => this._onNew());
+
+    // Global keyboard shortcut: ⌘N / Ctrl-N creates a note even when the
+    // focus is in the editor or sidebar. Will not fire while typing in
+    // inputs, contenteditable, or modals.
+    document.addEventListener('keydown', (e) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'n') return;
+      const tag = (document.activeElement?.tagName || '').toLowerCase();
+      const isEditable = document.activeElement?.isContentEditable
+        || tag === 'input' || tag === 'textarea';
+      const modalOpen = !$('settings-modal').classList.contains('hidden');
+      if (modalOpen || isEditable) return;
+      e.preventDefault();
+      this._onNew();
+    });
   },
 
   /** Select + open a note in the editor. */
@@ -51,7 +71,10 @@ export const noteList = {
     const wrap = $('notes-list');
 
     if (!list.length) {
-      wrap.innerHTML = `<div class="notes-empty">${i18n.t('notes.empty')}<br><span style="color:var(--notes-blue)">${i18n.t('notes.emptyHint')}</span></div>`;
+      wrap.innerHTML = `<button class="notes-empty-create" type="button">
+        <div class="notes-empty">${i18n.t('notes.empty')}</div>
+        <div class="notes-empty-hint"><span class="plus">+</span> ${i18n.t('notes.emptyHint')}</div>
+      </button>`;
       this._renderCount(0);
       return;
     }
@@ -116,7 +139,8 @@ export const noteList = {
 
   _onShare() {
     const n = notes.find(activeNoteId);
-    if (!n || (!n.title && !n.body)) {
+    const hasChecklist = !!n?.checklist?.some(item => item?.t?.trim());
+    if (!n || (!n.title && !n.body && !hasChecklist)) {
       bus.emit('toast', i18n.t('toast.empty'));
       return;
     }
