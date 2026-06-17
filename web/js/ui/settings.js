@@ -9,6 +9,7 @@ import { theme } from '../core/theme.js';
 import { i18n } from '../core/i18n.js';
 import { relays } from '../features/relays.js';
 import { notes } from '../features/notes.js';
+import { account } from '../features/account.js';
 import { store } from '../core/store.js';
 import { bus } from '../core/eventbus.js';
 
@@ -32,15 +33,21 @@ export const settings = {
       if (btn) { theme.setMode(btn.dataset.theme); this._syncTheme(); }
     });
 
-    // Language segmented control
-    $('lang-segmented').addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-lang]');
-      if (btn) { i18n.setLocale(btn.dataset.lang); this._syncLang(); }
+    // Language select
+    this._buildLangOptions();
+    $('lang-select').addEventListener('change', (e) => {
+      i18n.setLocale(e.target.value);
     });
 
     // Relays
     $('add-relay-btn').addEventListener('click', () => this._toggleAddRow(true));
     $('relay-list').addEventListener('click', (e) => this._onRelayClick(e));
+
+    // Account
+    $('account-connect-btn').addEventListener('click', () => this._connectAccount());
+    $('account-nip07-btn').addEventListener('click', () => this._connectNip07());
+    $('account-disconnect-btn').addEventListener('click', () => this._disconnectAccount());
+    $('account-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') this._connectAccount(); });
 
     // Data
     $('export-btn').addEventListener('click', () => this._export());
@@ -49,13 +56,15 @@ export const settings = {
     $('reset-btn').addEventListener('click', () => this._reset());
 
     bus.on('relays:changed', () => this._renderRelays());
-    bus.on('locale:changed', () => { this._renderRelays(); this._syncLang(); });
+    bus.on('locale:changed', () => { this._renderRelays(); this._syncLang(); this.renderAccount(); });
+    bus.on('account:changed', () => this.renderAccount());
   },
 
   open() {
     this._syncTheme();
     this._syncLang();
     this._renderRelays();
+    this.renderAccount();
     $('settings-modal').classList.remove('hidden');
     $('settings-modal').setAttribute('aria-hidden', 'false');
   },
@@ -75,9 +84,75 @@ export const settings = {
 
   _syncLang() {
     const lang = i18n.locale;
-    $('lang-segmented').querySelectorAll('[data-lang]').forEach(b => {
-      b.classList.toggle('active', b.dataset.lang === lang);
-    });
+    const select = $('lang-select');
+    if (select) select.value = lang;
+  },
+
+  _buildLangOptions() {
+    const select = $('lang-select');
+    if (!select) return;
+    select.innerHTML = Object.entries(i18n.supported).map(([code, info]) => {
+      const label = info.native === info.name ? info.native : `${info.native} — ${info.name}`;
+      return `<option value="${code}">${label}</option>`;
+    }).join('');
+    select.value = i18n.locale;
+  },
+
+  /* ---------- Account ---------- */
+
+  renderAccount() {
+    const acc = account.current();
+    const input = $('account-input');
+    const connect = $('account-connect-btn');
+    const nip07 = $('account-nip07-btn');
+    const disconnect = $('account-disconnect-btn');
+    const status = $('account-status');
+
+    if (acc) {
+      input.value = acc.nsec || acc.npub || acc.rawPubkey || '';
+      connect.classList.add('hidden');
+      nip07.classList.add('hidden');
+      disconnect.classList.remove('hidden');
+      status.innerHTML = `
+        <div class="account-status-ok">● ${i18n.t('settings.accountConnected')}</div>
+        <div class="account-status-line">${escapeHtml(acc.displayName)}</div>
+        <div class="account-status-line">${i18n.t('settings.accountHint')}</div>`;
+    } else {
+      input.value = '';
+      connect.classList.remove('hidden');
+      nip07.classList.remove('hidden');
+      disconnect.classList.add('hidden');
+      status.innerHTML = `<div class="account-status-muted">${i18n.t('settings.accountOffline')}</div>`;
+    }
+  },
+
+  _connectAccount() {
+    const res = account.connect($('account-input').value);
+    if (res.then) {
+      res.then(r => this._handleConnectResult(r));
+    } else {
+      this._handleConnectResult(res);
+    }
+  },
+
+  async _connectNip07() {
+    this._handleConnectResult(await account.connect('nip07'));
+  },
+
+  _handleConnectResult(res) {
+    if (!res.ok) {
+      bus.emit('toast', i18n.t(res.error));
+      this.renderAccount();
+      return;
+    }
+    bus.emit('toast', i18n.t('toast.accountConnected'));
+    this.renderAccount();
+  },
+
+  _disconnectAccount() {
+    account.disconnect();
+    bus.emit('toast', i18n.t('toast.accountDisconnected'));
+    this.renderAccount();
   },
 
   /* ---------- Relays ---------- */
@@ -198,3 +273,9 @@ export const settings = {
     location.reload();
   },
 };
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}

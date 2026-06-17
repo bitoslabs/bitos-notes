@@ -27,12 +27,16 @@ import enDict from '../../locales/en.js';
 import frDict from '../../locales/fr.js';
 import esDict from '../../locales/es.js';
 import arDict from '../../locales/ar.js';
+import loDict from '../../locales/lo.js';
+import thDict from '../../locales/th.js';
 
 const SUPPORTED = {
-  en: { name: 'English',  rtl: false, dict: enDict },
-  fr: { name: 'Français', rtl: false, dict: frDict },
-  es: { name: 'Español',  rtl: false, dict: esDict },
-  ar: { name: 'العربية',  rtl: true,  dict: arDict },
+  en: { name: 'English',  native: 'English',  rtl: false, dict: enDict },
+  fr: { name: 'Français', native: 'Français', rtl: false, dict: frDict },
+  es: { name: 'Español',  native: 'Español',  rtl: false, dict: esDict },
+  ar: { name: 'العربية',  native: 'العربية',  rtl: true,  dict: arDict },
+  lo: { name: 'Lao',      native: 'ລາວ',      rtl: false, dict: loDict },
+  th: { name: 'Thai',     native: 'ไทย',      rtl: false, dict: thDict },
 };
 
 let current = 'en';

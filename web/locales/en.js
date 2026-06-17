@@ -45,6 +45,7 @@ export default {
   "editor.yesterday": "Yesterday",
 
   "account.icloud": "iCloud",
+  "account.npub": "Nostr",
 
   "settings.title": "Settings",
   "settings.appearance": "Appearance",
@@ -52,6 +53,15 @@ export default {
   "settings.themeDark": "Dark",
   "settings.themeSystem": "System",
   "settings.language": "Language",
+  "settings.account": "Nostr Account",
+  "settings.accountDesc": "Connect with an npub for read-only identity, or use nsec when private-key import is ready.",
+  "settings.accountPlaceholder": "npub1... or nsec1...",
+  "settings.accountConnect": "Connect",
+  "settings.accountNip07": "Use Wallet",
+  "settings.accountDisconnect": "Disconnect",
+  "settings.accountConnected": "Connected",
+  "settings.accountHint": "NIP-07 wallet is recommended for a real Nostr app.",
+  "settings.accountOffline": "Not connected. iCloud is shown as the local placeholder.",
   "settings.relays": "Nostr Relays",
   "settings.relaysDesc": "Sync your notes via Nostr relays. Add 2–3 for reliability.",
   "settings.data": "Data",
@@ -59,6 +69,10 @@ export default {
   "settings.import": "Import",
   "settings.reset": "Reset all data",
   "settings.about": "BitOS Notes · local-first + Nostr sync · v0.1",
+
+  "account.invalid": "Invalid npub or nsec key",
+  "account.nip07Missing": "No Nostr wallet (NIP-07) detected",
+  "account.nip07Failed": "Nostr wallet connection failed",
 
   "relays.add": "+ Add",
   "relays.placeholder": "wss://relay.example.com",
@@ -86,6 +100,8 @@ export default {
   "toast.noteCreated": "Note created",
   "toast.empty": "Nothing to share yet",
   "toast.shared": "Share link copied",
+  "toast.accountConnected": "Nostr account connected",
+  "toast.accountDisconnected": "Nostr account disconnected",
 
   "confirm.deleteForever": "Delete this note permanently?",
   "confirm.reset": "Erase all notes, folders, relays and settings? This cannot be undone.",

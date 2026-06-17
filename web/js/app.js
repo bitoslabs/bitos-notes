@@ -7,6 +7,7 @@
 import { i18n } from './core/i18n.js';
 import { theme } from './core/theme.js';
 import { router } from './core/router.js';
+import { account } from './features/account.js';
 import { editor } from './features/editor.js';
 import { sidebar } from './ui/sidebar.js';
 import { noteList } from './ui/notelist.js';
@@ -25,6 +26,7 @@ async function boot() {
 
   // 4. UI modules (register DOM handlers).
   sidebar.init();
+  sidebar.renderAccount();
   noteList.init();
   editor.init();
   settings.init();
@@ -68,6 +70,12 @@ function wireEvents() {
     toast.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toast.classList.remove('show'), 2400);
+  });
+
+  // Account changes → refresh sidebar + settings.
+  bus.on('account:changed', () => {
+    sidebar.renderAccount();
+    settings.renderAccount();
   });
 }
 

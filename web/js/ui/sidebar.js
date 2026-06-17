@@ -7,6 +7,7 @@
 
 import { folders } from '../features/folders.js';
 import { notes } from '../features/notes.js';
+import { account } from '../features/account.js';
 import { i18n } from '../core/i18n.js';
 import { bus } from '../core/eventbus.js';
 import { store } from '../core/store.js';
@@ -28,6 +29,27 @@ export const sidebar = {
     bus.on('notes:changed',  () => this.render());
     bus.on('folders:changed', () => this.render());
     bus.on('locale:changed', () => this.render());
+    bus.on('account:changed', () => this.renderAccount());
+  },
+
+  renderAccount() {
+    const acc = account.current();
+    const label = $('account-label');
+    const email = $('account-email');
+    const avatar = $('account-avatar');
+
+    if (acc) {
+      label.textContent = 'Nostr';
+      email.textContent = acc.displayName || acc.npub;
+      avatar.textContent = (acc.npub || 'N').slice(0, 1).toUpperCase();
+      avatar.style.background = 'linear-gradient(135deg, var(--notes-blue), #8b5cf6)';
+      return;
+    }
+
+    label.textContent = 'iCloud';
+    email.textContent = '-';
+    avatar.textContent = 'B';
+    avatar.style.background = '';
   },
 
   /** Select a folder; persists + notifies the rest of the app. */
