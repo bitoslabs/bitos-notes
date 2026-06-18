@@ -70,6 +70,7 @@ export const folders = {
       system: false,
       createdAt: Date.now(),                    // captured so 'Sort by Date Created' works
       order: list.length,                       // stable position for 'manual' sort
+      syncState: 'dirty',
     };
     store.setFolders([...list, folder]);
     bus.emit('folders:changed');
@@ -78,7 +79,9 @@ export const folders = {
 
   /** Rename a user folder (system folders are immutable). */
   rename(id, name) {
-    const list = store.getFolders().map(f => f.id === id ? { ...f, name: name.trim() } : f);
+    const list = store.getFolders().map(f =>
+      f.id === id ? { ...f, name: name.trim(), syncState: 'dirty' } : f
+    );
     store.setFolders(list);
     bus.emit('folders:changed');
   },
@@ -87,9 +90,12 @@ export const folders = {
   remove(id) {
     store.setFolders(store.getFolders().filter(f => f.id !== id));
     // Reassign every note that lived in the deleted folder back to Notes,
-    // matching the documented behavior (and macOS Notes).
+    // matching the documented behavior (and macOS Notes). Bump syncState so
+    // the moved notes republish with their new folder.
     store.setNotes(
-      store.getNotes().map(n => n.folder === id ? { ...n, folder: 'notes' } : n)
+      store.getNotes().map(n =>
+        n.folder === id ? { ...n, folder: 'notes', syncState: 'dirty' } : n
+      )
     );
     bus.emit('folders:changed');
     bus.emit('notes:changed');

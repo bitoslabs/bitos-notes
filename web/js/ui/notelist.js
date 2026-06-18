@@ -96,13 +96,38 @@ export const noteList = {
       html += `<div class="list-section">📌 ${i18n.t('editor.pinned')}</div>`;
       html += pinned.map(card).join('');
     }
-    if (pinned.length && rest.length && !search) {
-      html += `<div class="list-section">${i18n.t('editor.allNotes')}</div>`;
+
+    // Non-pinned notes: group by date when sorting by a date field, exactly
+    // like macOS Notes. Title-sort and active search flatten to one list.
+    const mode = notes.sortMode;
+    const groupByDate = (mode === 'updated' || mode === 'created') && !search;
+
+    if (groupByDate && rest.length) {
+      html += renderGrouped(rest, mode);
+    } else if (rest.length) {
+      // Title sort or search → flat list. Single "All Notes" header only
+      // when not searching (search hides all section headers).
+      if (!search) html += `<div class="list-section">${i18n.t('editor.allNotes')}</div>`;
+      html += rest.map(card).join('');
     }
-    html += rest.map(card).join('');
 
     wrap.innerHTML = html;
     this._renderCount(list.length);
+
+    /** Render non-pinned notes grouped into consecutive date sections. */
+    function renderGrouped(items, sortMode) {
+      let out = '';
+      let currentKey = null;
+      for (const n of items) {
+        const bucket = notes.dateBucket(n, sortMode);
+        if (bucket.key !== currentKey) {
+          currentKey = bucket.key;
+          out += `<div class="list-section">${escapeHtml(bucket.label)}</div>`;
+        }
+        out += card(n);
+      }
+      return out;
+    }
 
     function card(n) {
       const preview = notes.preview(n) || '';

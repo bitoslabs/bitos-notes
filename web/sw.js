@@ -5,7 +5,7 @@
  * app is fully functional offline once cached.
  */
 
-const VERSION = 'v4';
+const VERSION = 'v7';
 const CACHE = `bitos-notes-${VERSION}`;
 
 // App shell — everything needed to boot offline.
@@ -16,6 +16,10 @@ const SHELL = [
   './js/app.js',
   './js/core/eventbus.js',
   './js/core/store.js',
+  './js/core/db.js',
+  './js/core/nostr.js',
+  './js/core/nip44.js',
+  './js/core/sync.js',
   './js/core/i18n.js',
   './js/core/theme.js',
   './js/core/router.js',
@@ -23,13 +27,21 @@ const SHELL = [
   './js/features/notes.js',
   './js/features/editor.js',
   './js/features/relays.js',
+  './js/features/profile.js',
+  './js/features/account.js',
   './js/ui/sidebar.js',
   './js/ui/notelist.js',
   './js/ui/settings.js',
+  './js/ui/account.js',
+  './js/ui/dialog.js',
+  './js/ui/popup.js',
+  './js/ui/sync.js',
   './locales/en.js',
   './locales/fr.js',
   './locales/es.js',
   './locales/ar.js',
+  './locales/th.js',
+  './locales/lo.js',
   './icon.svg',
   './manifest.webmanifest',
 ];
@@ -53,8 +65,23 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
+  const isNavigation = req.mode === 'navigate' || req.destination === 'document';
+  const isShellDoc = url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/sw.js' || url.pathname === '/manifest.webmanifest';
 
-  // Same-origin: cache-first (app shell), fall back to network + cache.
+  // Always try the network first for the HTML shell and SW-related files so
+  // updates can break out of an old cached boot path.
+  if (isNavigation || isShellDoc) {
+    e.respondWith(
+      fetch(req).then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(req, copy));
+        return res;
+      }).catch(() => caches.match(req).then((cached) => cached || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  // Same-origin: cache-first for static assets, fall back to network + cache.
   if (url.origin === location.origin) {
     e.respondWith(
       caches.match(req).then((cached) =>

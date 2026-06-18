@@ -62,6 +62,7 @@ export const notes = {
       checklist: [],
       createdAt: now,
       updatedAt: now,
+      syncState: 'dirty',
     };
     store.setNotes([note, ...this.all()]);
     bus.emit('notes:changed');
@@ -71,7 +72,7 @@ export const notes = {
   /** Patch a note with partial fields + bump updatedAt. */
   update(id, patch) {
     const list = this.all().map(n =>
-      n.id === id ? { ...n, ...patch, updatedAt: Date.now() } : n
+      n.id === id ? { ...n, ...patch, updatedAt: Date.now(), syncState: 'dirty' } : n
     );
     store.setNotes(list);
     bus.emit('notes:changed', { id, patch });
@@ -118,6 +119,45 @@ export const notes = {
   /** Localized relative date label. */
   dateLabel(n) {
     return formatDate(n.updatedAt);
+  },
+
+  /**
+   * Bucket a note into a date section for list grouping (macOS Notes style).
+   * Respects the sort mode: 'updated' uses updatedAt, 'created' uses createdAt.
+   * Returns { key, label } where `key` orders newest-first and `label` is the
+   * localized section header. Pure function; does not depend on sort order.
+   */
+  dateBucket(n, mode = 'updated') {
+    const ts = mode === 'created' ? (n.createdAt || 0) : (n.updatedAt || 0);
+    const d = new Date(ts);
+    const now = new Date();
+    const dayMs = 24 * 60 * 60 * 1000;
+
+    if (ts <= 0 || isNaN(d.getTime())) {
+      return { key: 'older', label: i18n.t('notes.sectionOlder') };
+    }
+    // Calendar-day comparisons (ignore time) for Today / Yesterday.
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const startOfYesterday = startOfToday - dayMs;
+    const noteDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+
+    if (noteDay >= startOfToday) {
+      return { key: 'today', label: i18n.t('notes.sectionToday') };
+    }
+    if (noteDay >= startOfYesterday) {
+      return { key: 'yesterday', label: i18n.t('notes.sectionYesterday') };
+    }
+    if (ts > startOfYesterday - 6 * dayMs) {       // within the previous 7 days
+      return { key: 'last7', label: i18n.t('notes.sectionPrevious7') };
+    }
+    if (ts > startOfYesterday - 29 * dayMs) {      // within the previous 30 days
+      return { key: 'last30', label: i18n.t('notes.sectionPrevious30') };
+    }
+    // Older: group per calendar month, labelled "March 2025" (auto-localized).
+    // The key is zero-padded so lexical order = chronological order.
+    const monthKey = `m-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const label = d.toLocaleDateString([], { month: 'long', year: 'numeric' });
+    return { key: monthKey, label };
   },
 };
 

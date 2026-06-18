@@ -230,6 +230,7 @@ svg { width: 100%; height: 100%; }
 .note-card .nc-date { font-size: 11px; color: var(--text-tertiary); margin-top: 3px; }
 .notes-empty { padding: 40px 16px; text-align: center; font-size: 13px; color: var(--text-secondary); }
 .list-section { padding: 12px 16px 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); }
+.notes-list > .list-section:first-child { padding-top: 4px; }     /* avoid double top padding when the list opens with a section header */
 .note-count { text-align: center; font-size: 11px; color: var(--text-secondary); padding: 6px; border-top: 1px solid var(--divider); }
 
 /* Clickable empty states — quick-create affordance */
@@ -544,6 +545,35 @@ svg { width: 100%; height: 100%; }
 
 /* ---- Account setup modal ---- */
 .account-modal { width: min(440px, calc(100vw - 24px)); }
+
+/* ---- Account "connected" step (profile + key actions) ---- */
+/* Choose-step current-account banner */
+.ac-choose-banner {
+  margin-bottom: 14px; padding: 14px; background: var(--notes-blue-soft);
+  border: 1px solid var(--divider); border-radius: var(--radius-md);
+}
+.ac-banner-head { display: flex; align-items: center; gap: 10px; }
+.ac-banner-meta { min-width: 0; flex: 1; }
+.ac-banner-name { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ac-banner-status { font-size: 11px; color: var(--notes-blue); font-weight: 600; margin-top: 2px; }
+.ac-banner-keys { margin-top: 12px; }
+.ac-banner-keys .key-row { margin-top: 0; }
+.ac-banner-keys .key-row + .key-row { margin-top: 10px; }
+.ac-banner-keys .key-display { background: var(--bg-elevated, var(--bg-list)); }
+
+.account-connected-card { display: flex; align-items: center; gap: 14px; padding: 4px 0 12px; }
+.account-connected-card .ac-meta { min-width: 0; flex: 1; }
+.ac-name { font-size: 16px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ac-sub { margin-top: 3px; }
+.ac-source { font-size: 11px; color: var(--text-tertiary); margin-top: 3px; }
+
+/* Key rows (public key always shown, private key revealed on demand) */
+.key-row { margin-top: 12px; }
+.key-row-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 6px; }
+.key-row .key-display { margin-top: 0; }
+.npub-value { font-size: 11px; }
+
+.reveal-section { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--divider); }
 .setup-options { display: flex; flex-direction: column; gap: 8px; }
 .setup-option {
   display: flex; align-items: center; gap: 14px; text-align: start;
@@ -650,3 +680,56 @@ svg { width: 100%; height: 100%; }
 /* env safe areas (notch) */
 .list-head, .editor-head, .titlebar { padding-block: max(env(safe-area-inset-top), 0px); }
 .account-bar { padding-bottom: max(env(safe-area-inset-bottom), 10px); }
+
+/* ---- Sync status chip (sidebar) ---- */
+.sync-chip { position: relative; color: var(--text-tertiary); }
+.sync-chip[data-state="synced"]  { color: var(--notes-green); }
+.sync-chip[data-state="syncing"] { color: var(--notes-blue); }
+.sync-chip[data-state="error"]   { color: var(--notes-red); }
+.sync-chip[data-state="offline"] { color: var(--text-tertiary); }
+.sync-chip .ico { width: 17px; height: 17px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 0.9s linear infinite; }
+
+/* ---- NIP-05 verified badge (sidebar) ---- */
+.nip05-badge {
+  margin-left: auto; flex-shrink: 0;
+  width: 16px; height: 16px; display: grid; place-items: center;
+  border-radius: 50%; background: var(--notes-blue-soft); color: var(--notes-blue);
+}
+.nip05-badge .ico { width: 11px; height: 11px; }
+.nip05-badge.hidden { display: none; }
+
+/* ---- Profile card + editor (settings modal) ---- */
+.avatar.lg { width: 52px; height: 52px; font-size: 20px; flex-shrink: 0; }
+.avatar.lg img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+
+.profile-card { padding: 8px 0 4px; }
+.profile-head { display: flex; align-items: center; gap: 12px; }
+.profile-meta { min-width: 0; flex: 1; }
+.profile-name { font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-sub { margin-top: 2px; }
+.profile-source { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+.profile-about { font-size: 12px; color: var(--text-secondary); line-height: 1.4; margin: 10px 0 0; white-space: pre-wrap; word-break: break-word; }
+
+.nip05-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 10px;
+  background: var(--hover); color: var(--text-secondary);
+}
+.nip05-chip.verified { background: var(--notes-blue-soft); color: var(--notes-blue); }
+.nip05-chip .ico { width: 11px; height: 11px; }
+
+/* Profile editor + key display (shared field styling) */
+.profile-editor, .profile-keys { padding: 8px 0 0; }
+.profile-editor .field, .profile-keys .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.profile-editor .field > span, .profile-keys .field > span { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+.profile-editor .text-input, .profile-keys .text-input { width: 100%; box-sizing: border-box; }
+textarea.text-input { resize: vertical; font-family: inherit; }
+.key-display-row { display: flex; gap: 6px; }
+.key-display-row .text-input { flex: 1; min-width: 0; font-family: ui-monospace, "SF Mono", monospace; font-size: 11px; }
+.btn-primary { font-family: inherit; font-weight: 600; font-size: 14px; padding: 8px 14px; min-height: 36px; color: #fff; background: var(--notes-blue); border: 0; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.12s, transform 0.06s; }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
