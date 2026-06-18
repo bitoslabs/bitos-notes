@@ -18,7 +18,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Notes" />
 
-  <link rel="stylesheet" href="./css/app.css" />
+  <link rel="stylesheet" href="./css/app.css?v=14" />
 </head>
 <body data-theme="light">
   <!-- ============ APP SHELL ============ -->
@@ -290,7 +290,23 @@
           </div>
         </section>
 
-        <p class="about" data-i18n="settings.about">BitOS Notes · local-first + Nostr sync · v0.1</p>
+        <!-- About -->
+        <section class="settings-section">
+          <h4 data-i18n="about.title">About</h4>
+          <div class="about-card">
+            <div class="about-app">
+              <div class="about-name">BitOS Notes</div>
+              <div class="about-version" id="about-version">v0.2</div>
+            </div>
+            <p class="about-tagline" data-i18n="about.tagline">Local-first notes with Nostr sync. Your data lives on your device — Nostr is just the transport.</p>
+            <div class="about-links">
+              <a href="https://github.com/bitoslabs/bitos-notes" target="_blank" rel="noopener" class="ghost-btn" data-i18n="about.source">Source code ↗</a>
+              <a href="https://github.com/bitoslabs/bitos-notes/issues" target="_blank" rel="noopener" class="ghost-btn" data-i18n="about.issues">Report issue ↗</a>
+              <a href="https://github.com/nostr-protocol/nips" target="_blank" rel="noopener" class="ghost-btn" data-i18n="about.nostr">Nostr protocol ↗</a>
+            </div>
+            <p class="about-build" id="about-build"></p>
+          </div>
+        </section>
       </div>
     </div>
   </div>
@@ -472,6 +488,6 @@
     </div>
   </div>
 
-  <script type="module" src="./js/app.js?v=13"></script>
+  <script type="module" src="./js/app.js?v=14"></script>
 </body>
 </html>

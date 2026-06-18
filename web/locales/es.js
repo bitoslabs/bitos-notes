@@ -211,5 +211,11 @@ export default {
   "profile.copyNpub": "Copiar npub",
   "profile.npubCopied": "Clave pública copiada",
   "profile.copyFailed": "Copia fallida",
-  "profile.readOnlySign": "Las cuentas de solo lectura no pueden publicar. Importa un nsec o usa una billetera Nostr."
+  "profile.readOnlySign": "Las cuentas de solo lectura no pueden publicar. Importa un nsec o usa una billetera Nostr.",
+
+  "about.title": "Acerca de",
+  "about.tagline": "Notas locales con sincronización Nostr. Tus datos viven en tu dispositivo — Nostr es solo el transporte.",
+  "about.source": "Código fuente ↗",
+  "about.issues": "Reportar problema ↗",
+  "about.nostr": "Protocolo Nostr ↗"
 };

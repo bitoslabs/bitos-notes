@@ -228,5 +228,11 @@ export default {
   "account.npubCopied": "คัดลอกคีย์สาธารณะแล้ว",
   "account.editProfile": "แก้ไขโปรไฟล์",
   "account.manage": "จัดการบัญชี",
-  "account.revealSection": "คีย์ส่วนตัว"
+  "account.revealSection": "คีย์ส่วนตัว",
+
+  "about.title": "เกี่ยวกับ",
+  "about.tagline": "บันทึกในเครื่องพร้อมซิงค์ Nostr ข้อมูลของคุณอยู่บนอุปกรณ์ — Nostr เป็นเพียงตัวส่งข้อมูล",
+  "about.source": "ซอร์สโค้ด ↗",
+  "about.issues": "รายงานปัญหา ↗",
+  "about.nostr": "โปรโตคอล Nostr ↗"
 };

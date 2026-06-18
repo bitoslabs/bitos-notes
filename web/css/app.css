@@ -83,6 +83,21 @@ body {
   overflow: hidden;
 }
 
+/* Re-enable text selection on content users actually need to read/copy:
+   the editor, modal text, profile/about copy, and all form fields. The
+   global body:none keeps the app chrome (sidebar, list, buttons) feeling
+   "native" and click-y rather than web-y. */
+[contenteditable],
+.modal-body,
+.text-input, textarea, input, code,
+.profile-about, .about-tagline, .about-build, .about-card,
+.nsec-value:not(.masked),
+.profile-name, .ac-name, .ac-banner-name,
+.account-status {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 /* Utility — the modal/empty-state toggle this */
 .hidden { display: none !important; }
 button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
@@ -408,6 +423,15 @@ svg { width: 100%; height: 100%; }
 .ghost-btn:active { transform: scale(0.98); }
 .ghost-btn.danger { color: var(--notes-red); }
 .row-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+/* ---- About section ---- */
+.about-card { display: flex; flex-direction: column; gap: 10px; }
+.about-app { display: flex; align-items: baseline; gap: 8px; }
+.about-name { font-size: 15px; font-weight: 700; }
+.about-version { font-size: 11px; font-weight: 600; color: var(--notes-blue); background: var(--notes-blue-soft); padding: 1px 7px; border-radius: 10px; }
+.about-tagline { font-size: 12px; color: var(--text-secondary); line-height: 1.45; margin: 0; }
+.about-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.about-links a { text-decoration: none; font-size: 12px; }
+.about-build { font-size: 10px; color: var(--text-tertiary); margin: 2px 0 0; }
 .about { text-align: center; font-size: 11px; color: var(--text-tertiary); margin-top: 16px; }
 
 /* Account */
