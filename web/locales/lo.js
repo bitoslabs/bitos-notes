@@ -228,5 +228,11 @@ export default {
   "account.npubCopied": "ສຳເນົາກະແຈສາທາລະນະແລ້ວ",
   "account.editProfile": "ແກ້ໄຂໂປຣໄຟລ໌",
   "account.manage": "ຈັດການບັນຊີ",
-  "account.revealSection": "ກະແຈສ່ວນຕົວ"
+  "account.revealSection": "ກະແຈສ່ວນຕົວ",
+
+  "about.title": "ກ່ຽວກັບ",
+  "about.tagline": "ບັນທຶກທ້ອງຖິ່ນພ້ອມຊິງຄ Nostr ຂໍ້ມູນຂອງທ່ານຢູ່ໃນອຸປະກອນ — Nostr ເປັນແຄ່ພຽງຕົວສົ່ງຂໍ້ມູນ",
+  "about.source": "ຊອດໂຄ້ດ ↗",
+  "about.issues": "ລາຍງານບັນຫາ ↗",
+  "about.nostr": "ໂປຣໂຕຄອນ Nostr ↗"
 };

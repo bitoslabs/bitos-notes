@@ -45,6 +45,7 @@ async function boot() {
   // 6. Initial render.
   sidebar.render();
   noteList.render();
+  renderAbout();
 
   // 7. Wire cross-module events (kept here so modules stay decoupled).
   wireEvents();
@@ -112,6 +113,16 @@ function registerSW() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
+}
+
+/** Populate the About section with the app version + build label. */
+function renderAbout() {
+  const VERSION = 'v0.2';
+  const BUILD = '2026.06';
+  const ver = document.getElementById('about-version');
+  const build = document.getElementById('about-build');
+  if (ver) ver.textContent = VERSION;
+  if (build) build.textContent = `BitOS Notes ${VERSION} · ${BUILD}`;
 }
 
 boot();

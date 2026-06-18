@@ -211,5 +211,11 @@ export default {
   "profile.copyNpub": "نسخ npub",
   "profile.npubCopied": "تم نسخ المفتاح العام",
   "profile.copyFailed": "فشل النسخ",
-  "profile.readOnlySign": "لا يمكن للحسابات للقراءة فقط النشر. استورد nsec أو استخدم محفظة Nostr."
+  "profile.readOnlySign": "لا يمكن للحسابات للقراءة فقط النشر. استورد nsec أو استخدم محفظة Nostr.",
+
+  "about.title": "حول",
+  "about.tagline": "ملاحظات محلية مع مزامنة Nostr. بياناتك تبقى على جهازك — Nostr هو مجرد الناقل.",
+  "about.source": "الكود المصدري ↗",
+  "about.issues": "الإبلاغ عن مشكلة ↗",
+  "about.nostr": "بروتوكول Nostr ↗"
 };

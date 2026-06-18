@@ -237,5 +237,12 @@ export default {
   "account.npubCopied": "Public key copied",
   "account.editProfile": "Edit profile",
   "account.manage": "Manage account",
-  "account.revealSection": "Private key"
+  "account.revealSection": "Private key",
+
+  /* ---- About ---- */
+  "about.title": "About",
+  "about.tagline": "Local-first notes with Nostr sync. Your data lives on your device — Nostr is just the transport.",
+  "about.source": "Source code ↗",
+  "about.issues": "Report issue ↗",
+  "about.nostr": "Nostr protocol ↗"
 };
