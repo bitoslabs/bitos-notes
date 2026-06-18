@@ -10,6 +10,7 @@ import { i18n } from '../core/i18n.js';
 import { relays } from '../features/relays.js';
 import { notes } from '../features/notes.js';
 import { account } from '../features/account.js';
+import { profile } from '../features/profile.js';
 import { store } from '../core/store.js';
 import { bus } from '../core/eventbus.js';
 import { accountModal } from './account.js';
@@ -58,12 +59,25 @@ export const settings = {
     $('account-connect-btn').addEventListener('click', () => this._connectAccount());
     $('account-nip07-btn').addEventListener('click', () => this._connectNip07());
     $('account-disconnect-btn').addEventListener('click', () => this._disconnectAccount());
+    $('account-disconnect-btn-2').addEventListener('click', () => this._disconnectAccount());
     $('account-setup-btn').addEventListener('click', () => {
       this.close();
-      accountModal.open('choose');
+      // "Manage account…" when connected → connected step; else the setup wizard.
+      accountModal.open(account.current() ? 'connected' : 'choose');
     });
-    $('account-backup-btn').addEventListener('click', () => this._backupKey());
     $('account-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') this._connectAccount(); });
+
+    // Profile editor
+    $('profile-edit-btn').addEventListener('click', () => this._toggleProfileEditor(true));
+    $('profile-cancel-btn').addEventListener('click', () => this._toggleProfileEditor(false));
+    $('profile-save-btn').addEventListener('click', () => this._saveProfile(false));
+    $('profile-publish-btn').addEventListener('click', () => this._publishProfile());
+
+    // Key widget (inside the profile card)
+    $('s-copy-npub').addEventListener('click', () => this._sCopyNpub());
+    $('s-show-nsec').addEventListener('click', (e) => this._sToggleNsec(e.currentTarget));
+    $('s-copy-nsec').addEventListener('click', () => this._sCopyNsec());
+    $('s-download-nsec').addEventListener('click', () => this._sDownloadNsec());
 
     // Data
     $('export-btn').addEventListener('click', () => this._export());
@@ -74,6 +88,7 @@ export const settings = {
     bus.on('relays:changed', () => this._renderRelays());
     bus.on('locale:changed', () => { this._renderRelays(); this._syncLang(); this.renderAccount(); });
     bus.on('account:changed', () => this.renderAccount());
+    bus.on('profile:changed', () => this._renderProfile());
   },
 
   open() {
@@ -81,6 +96,8 @@ export const settings = {
     this._syncAccent();
     this._syncLang();
     this._renderRelays();
+    // Collapse the profile editor on each open.
+    $('profile-editor').classList.add('hidden');
     this.renderAccount();
     $('settings-modal').classList.remove('hidden');
     $('settings-modal').setAttribute('aria-hidden', 'false');
@@ -143,42 +160,166 @@ export const settings = {
 
   renderAccount() {
     const acc = account.current();
-    const input = $('account-input');
+    const form = $('account-form');
+    const rowActions = $('account-row-actions');
     const connect = $('account-connect-btn');
     const nip07 = $('account-nip07-btn');
     const disconnect = $('account-disconnect-btn');
     const setup = $('account-setup-btn');
-    const backup = $('account-backup-btn');
     const status = $('account-status');
 
     if (acc) {
-      // Never echo the full private key back into the field — it encourages
-      // accidental copy-paste. Show the public identity instead.
-      input.value = acc.npub || (acc.rawPubkey ? 'npub1' + acc.rawPubkey : '');
-      input.type = 'text';
-      connect.classList.add('hidden');
-      nip07.classList.add('hidden');
+      // Connected → show the profile card, hide the inline connect form.
+      form.classList.add('hidden');
+      rowActions.classList.add('hidden');
+      $('profile-card').classList.remove('hidden');
+      // Keep the (now hidden) power-user controls in sync too.
       disconnect.classList.remove('hidden');
       setup.textContent = i18n.t('settings.accountManage');
-      // Backup is only meaningful when we hold the secret locally.
-      if (account.revealSecret()) backup.classList.remove('hidden');
-      else backup.classList.add('hidden');
-      const sourceLabel = i18n.t('account.source.' + (acc.source || 'npub'));
-      status.innerHTML = `
-        <div class="account-status-ok">● ${i18n.t('settings.accountConnected')}</div>
-        <div class="account-status-line">${escapeHtml(acc.displayName)}</div>
-        <div class="account-status-line">${escapeHtml(sourceLabel)}</div>`;
+      status.innerHTML = '';
+      this._renderProfile();
     } else {
-      input.value = '';
-      input.type = 'text';
+      // Not connected → show the inline connect form, hide the profile card.
+      form.classList.remove('hidden');
+      rowActions.classList.remove('hidden');
+      $('profile-card').classList.add('hidden');
+      $('profile-editor').classList.add('hidden');
+      $('account-input').value = '';
+      $('account-input').type = 'text';
       connect.classList.remove('hidden');
       nip07.classList.remove('hidden');
       disconnect.classList.add('hidden');
       setup.textContent = i18n.t('settings.accountSetup');
-      backup.classList.add('hidden');
       status.innerHTML = `<div class="account-status-muted">${i18n.t('settings.accountOffline')}</div>`;
     }
   },
+
+  /** Render the profile card + populate the editor inputs. */
+  _renderProfile() {
+    const acc = account.current();
+    if (!acc) return;
+    const p = profile.current();
+    const name = (p && (p.displayName || p.name)) || acc.displayName || account.shortNpub(acc.npub || '');
+    const about = (p && p.about) || '';
+    const picture = (p && p.picture) || '';
+    const nip05 = (p && p.nip05) || '';
+    const verified = !!(p && p.nip05Verified);
+
+    const avatar = $('profile-avatar');
+    if (picture) {
+      avatar.innerHTML = `<img src="${escapeAttr(picture)}" alt="" onerror="this.parentNode.textContent='${escapeAttr((name||'N').slice(0,1).toUpperCase())}'">`;
+    } else {
+      avatar.textContent = (name || 'N').slice(0, 1).toUpperCase();
+    }
+    $('profile-name').textContent = name;
+    const nip05El = $('profile-nip05');
+    if (nip05) {
+      nip05El.innerHTML = `<span class="nip05-chip ${verified ? 'verified' : ''}">${verified ? '<svg viewBox="0 0 24 24" class="ico"><path d="M20 6L9 17l-5-5"/></svg>' : ''}${escapeHtml(nip05)}</span>`;
+    } else { nip05El.innerHTML = ''; }
+    $('profile-source').textContent = i18n.t('account.source.' + (acc.source || 'npub'));
+    $('profile-about').textContent = about;
+    $('profile-about').classList.toggle('hidden', !about);
+
+    // Pre-fill the editor fields.
+    $('profile-name-input').value = (p && p.name) || '';
+    $('profile-about-input').value = about;
+    $('profile-picture-input').value = picture;
+    $('profile-nip05-input').value = nip05;
+
+    // Disable Publish for read-only (npub) accounts.
+    const canSign = acc.source !== 'npub';
+    $('profile-publish-btn').disabled = !canSign;
+    $('profile-publish-btn').title = canSign ? '' : i18n.t('profile.readOnlySign');
+    $('profile-edit-btn').disabled = !canSign;
+
+    // Key widget: populate npub (always) + nsec row (nsec accounts only).
+    $('s-npub').textContent = acc.npub || '—';
+    const nsec = account.revealSecret();
+    const nsecRow = $('s-nsec-row');
+    if (nsec) {
+      nsecRow.classList.remove('hidden');
+      $('s-nsec').textContent = nsec;
+      this._sMasked = true;
+      $('s-nsec').classList.add('masked');
+      $('s-show-nsec').textContent = i18n.t('account.show');
+    } else {
+      nsecRow.classList.add('hidden');
+    }
+  },
+
+  _toggleProfileEditor(show) {
+    $('profile-editor').classList.toggle('hidden', !show);
+    if (show) { $('profile-name-input').focus(); }
+  },
+
+  /* ---------- Key widget (inside the profile card) ---------- */
+
+  _sMasked: true,
+
+  async _sCopyNpub() {
+    const npub = account.current()?.npub || '';
+    try { await navigator.clipboard.writeText(npub); bus.emit('toast', i18n.t('account.npubCopied')); }
+    catch { bus.emit('toast', i18n.t('profile.copyFailed')); }
+  },
+
+  _sToggleNsec(btn) {
+    this._sMasked = !this._sMasked;
+    $('s-nsec').classList.toggle('masked', this._sMasked);
+    btn.textContent = i18n.t(this._sMasked ? 'account.show' : 'account.hide');
+  },
+
+  async _sCopyNsec() {
+    const nsec = account.revealSecret();
+    if (!nsec) { bus.emit('toast', i18n.t('account.noBackup')); return; }
+    try { await navigator.clipboard.writeText(nsec); bus.emit('toast', i18n.t('account.copied')); }
+    catch { bus.emit('toast', i18n.t('profile.copyFailed')); }
+  },
+
+  _sDownloadNsec() {
+    const nsec = account.revealSecret();
+    if (!nsec) { bus.emit('toast', i18n.t('account.noBackup')); return; }
+    const blob = new Blob([nsec], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bitos-nostr-key-${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    bus.emit('toast', i18n.t('account.downloaded'));
+  },
+
+  /** Save the editor fields locally (optionally publish). */
+  async _saveProfile(publish) {
+    const patch = {
+      name: $('profile-name-input').value.trim(),
+      displayName: $('profile-name-input').value.trim(),
+      about: $('profile-about-input').value.trim(),
+      picture: $('profile-picture-input').value.trim(),
+      nip05: $('profile-nip05-input').value.trim(),
+    };
+    await profile.update(patch);
+    if (publish) {
+      const btn = $('profile-publish-btn');
+      const original = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = i18n.t('profile.publishing');
+      try {
+        const ok = await profile.publish();
+        bus.emit('toast', ok ? i18n.t('profile.published') : i18n.t('profile.publishFailed'));
+        if (ok) this._toggleProfileEditor(false);
+      } catch (e) {
+        bus.emit('toast', i18n.t('profile.publishFailed'));
+      } finally {
+        btn.disabled = account.current()?.source === 'npub';
+        btn.textContent = original;
+      }
+    } else {
+      bus.emit('toast', i18n.t('profile.saved'));
+    }
+  },
+
+  _publishProfile() { return this._saveProfile(true); },
+
 
   _connectAccount() {
     const res = account.connect($('account-input').value);
@@ -224,35 +365,6 @@ export const settings = {
       bus.emit('toast', i18n.t('toast.accountDisconnected'));
       this.renderAccount();
     });
-  },
-
-  /** Show the stored private key again so the user can re-back it up. */
-  async _backupKey() {
-    const nsec = account.revealSecret();
-    if (!nsec) {
-      bus.emit('toast', i18n.t('account.noBackup'));
-      return;
-    }
-    const ok = await dialog.confirm({
-      kind: 'warn',
-      title: i18n.t('account.backupTitle'),
-      message: i18n.t('account.backupReveal'),
-      detail: i18n.t('account.backupRevealDetail'),
-      confirmText: i18n.t('account.reveal'),
-      cancelText: i18n.t('dialog.cancel'),
-    });
-    if (!ok) return;
-    await dialog.alert({
-      title: i18n.t('account.yourKey'),
-      message: nsec,
-      detail: i18n.t('account.backupDesc'),
-      confirmText: i18n.t('account.done'),
-    });
-    // Best-effort clipboard copy with a toast acknowledgement.
-    try {
-      await navigator.clipboard.writeText(nsec);
-      bus.emit('toast', i18n.t('account.copied'));
-    } catch {}
   },
 
   /* ---------- Relays ---------- */
@@ -377,9 +489,9 @@ export const settings = {
       requiresText: true,
       requireMatch: i18n.t('confirm.resetMatch'),
       confirmText: i18n.t('settings.reset'),
-    }).then((ok) => {
+    }).then(async (ok) => {
       if (!ok) return;
-      store.clearAll();
+      await store.clearAll();
       location.reload();
     });
   },
@@ -389,4 +501,11 @@ function escapeHtml(s) {
   const d = document.createElement('div');
   d.textContent = s || '';
   return d.innerHTML;
+}
+
+/** Attribute-safe escape (for inline HTML string building). */
+function escapeAttr(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

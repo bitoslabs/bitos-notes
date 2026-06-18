@@ -15,6 +15,7 @@
  */
 
 import { account } from '../features/account.js';
+import { profile } from '../features/profile.js';
 import { i18n } from '../core/i18n.js';
 import { bus } from '../core/eventbus.js';
 import { keysFromNsec, generateKeys, skToNsec } from '../core/nostr.js';
@@ -22,7 +23,9 @@ import * as dialog from './dialog.js';
 
 const $ = (id) => document.getElementById(id);
 let pendingNsec = null; // staged during the "create" step
-let masked = false;
+let masked = false;     // mask state for the create-step key box
+let acMasked = false;   // mask state for the connected-step reveal box
+let bannerMasked = true;// mask state for the choose-step banner nsec
 
 export const accountModal = {
   init() {
@@ -55,16 +58,38 @@ export const accountModal = {
     });
     $('account-finish-import').addEventListener('click', () => this._finishImport());
 
+    // Step 0 connected — profile + key actions
+    $('ac-copy-npub').addEventListener('click', () => this._copyNpub());
+    $('ac-edit-profile').addEventListener('click', () => this._editProfile());
+    $('ac-reveal-btn').addEventListener('click', () => this._revealInModal());
+    $('ac-disconnect').addEventListener('click', () => this._disconnect());
+    $('ac-copy-nsec').addEventListener('click', () => this._copyNsec());
+    $('ac-download-nsec').addEventListener('click', () => this._downloadNsec());
+    $('ac-show-toggle').addEventListener('click', (e) => this._toggleAcMask(e.currentTarget));
+
+    // Choose-step banner — copy npub/nsec, toggle nsec visibility
+    $('ac-banner-copy-npub').addEventListener('click', () => this._bannerCopyNpub());
+    $('ac-banner-copy-nsec').addEventListener('click', () => this._bannerCopyNsec());
+    $('ac-banner-show-nsec').addEventListener('click', (e) => this._toggleBannerNsec(e.currentTarget));
+
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') this.close(); });
   },
 
-  open(initialStep = 'choose') {
+  /**
+   * Open the modal. Defaults to the "connected" step when an account is set,
+   * otherwise to "choose". An explicit step (e.g. 'choose' from Settings
+   * "Set up account…") always wins.
+   */
+  open(initialStep) {
     pendingNsec = null;
+    masked = false;
+    acMasked = false;
     $('account-saved-toggle').checked = false;
     $('account-finish-create').disabled = true;
     $('account-import-input').value = '';
     $('account-import-error').classList.add('hidden');
-    this._go(initialStep);
+    const step = initialStep || (account.current() ? 'connected' : 'choose');
+    this._go(step);
     $('account-modal').classList.remove('hidden');
     $('account-modal').setAttribute('aria-hidden', 'false');
   },
@@ -85,6 +110,9 @@ export const accountModal = {
     $('account-modal').setAttribute('aria-hidden', 'true');
     pendingNsec = null;
     masked = false;
+    acMasked = false;
+    // Hide the reveal box so it doesn't linger with a secret on screen.
+    $('ac-reveal-section')?.classList.add('hidden');
   },
 
   async _warnAbandonBackup() {
@@ -107,13 +135,179 @@ export const accountModal = {
     $('account-modal').querySelectorAll('[data-step]').forEach(s => {
       s.classList.toggle('hidden', s.dataset.step !== step);
     });
-    if (step === 'choose') {
+    if (step === 'connected') {
+      $('account-modal-title').textContent = i18n.t('account.connectedTitle');
+      this._renderConnected();
+    } else if (step === 'choose') {
       $('account-modal-title').textContent = i18n.t('account.setupTitle');
+      this._renderChooseBanner();
     } else if (step === 'create') {
       $('account-modal-title').textContent = i18n.t('account.backupTitle');
     } else if (step === 'import') {
       $('account-modal-title').textContent = i18n.t('account.importTitle');
     }
+  },
+
+  /* ---------- Choose-step banner: current account + keys ---------- */
+
+  /**
+   * When the choose step opens and the user is already connected, show a
+   * banner at the top with their profile + copyable npub/nsec so they can
+   * grab their keys without leaving the setup screen. Hidden when not connected.
+   */
+  _renderChooseBanner() {
+    const acc = account.current();
+    const banner = $('ac-choose-banner');
+    if (!acc) { banner.classList.add('hidden'); return; }
+    banner.classList.remove('hidden');
+
+    const p = profile.current();
+    const name = (p && (p.displayName || p.name)) || acc.displayName || account.shortNpub(acc.npub || '');
+    const picture = p && p.picture;
+
+    const avatar = $('ac-banner-avatar');
+    if (picture) {
+      avatar.innerHTML = `<img src="${picture}" alt="" onerror="this.parentNode.textContent='${escapeAttr((name||'N').slice(0,1).toUpperCase())}'">`;
+    } else {
+      avatar.textContent = (name || 'N').slice(0, 1).toUpperCase();
+    }
+    $('ac-banner-name').textContent = name;
+    $('ac-banner-status').textContent = i18n.t('account.connectedReady');
+
+    // Public key (always shown).
+    $('ac-banner-npub').textContent = acc.npub || '—';
+
+    // Private key row only for nsec-backed accounts.
+    const nsec = account.revealSecret();
+    const nsecRow = $('ac-banner-nsec-row');
+    if (nsec) {
+      nsecRow.classList.remove('hidden');
+      // Keep masked by default until the user taps Show.
+      $('ac-banner-nsec').textContent = nsec;
+      $('ac-banner-nsec').classList.add('masked');
+      bannerMasked = true;
+      $('ac-banner-show-nsec').textContent = i18n.t('account.show');
+    } else {
+      nsecRow.classList.add('hidden');
+    }
+  },
+
+  _toggleBannerNsec(btn) {
+    bannerMasked = !bannerMasked;
+    $('ac-banner-nsec').classList.toggle('masked', bannerMasked);
+    btn.textContent = i18n.t(bannerMasked ? 'account.show' : 'account.hide');
+  },
+
+  async _bannerCopyNpub() {
+    const npub = account.current()?.npub || '';
+    try { await navigator.clipboard.writeText(npub); bus.emit('toast', i18n.t('account.npubCopied')); }
+    catch { bus.emit('toast', i18n.t('profile.copyFailed')); }
+  },
+
+  async _bannerCopyNsec() {
+    const nsec = account.revealSecret();
+    if (!nsec) return;
+    try { await navigator.clipboard.writeText(nsec); bus.emit('toast', i18n.t('account.copied')); }
+    catch { bus.emit('toast', i18n.t('profile.copyFailed')); }
+  },
+
+  /* ---------- Step 0: connected — profile + key actions ---------- */
+
+  /** Populate the connected step with the current profile + npub. */
+  _renderConnected() {
+    const acc = account.current();
+    if (!acc) { this._go('choose'); return; }
+    const p = profile.current();
+    const name = (p && (p.displayName || p.name)) || acc.displayName || account.shortNpub(acc.npub || '');
+    const picture = p && p.picture;
+    const nip05 = p && p.nip05;
+    const verified = !!(p && p.nip05Verified);
+
+    const avatar = $('ac-avatar');
+    if (picture) {
+      avatar.innerHTML = `<img src="${picture}" alt="" onerror="this.parentNode.textContent='${escapeAttr((name||'N').slice(0,1).toUpperCase())}'">`;
+    } else {
+      avatar.textContent = (name || 'N').slice(0, 1).toUpperCase();
+    }
+    $('ac-name').textContent = name;
+    const nip05El = $('ac-nip05');
+    if (nip05) {
+      nip05El.innerHTML = `<span class="nip05-chip ${verified ? 'verified' : ''}">${verified ? '<svg viewBox="0 0 24 24" class="ico"><path d="M20 6L9 17l-5-5"/></svg>' : ''}${escapeHtml(nip05)}</span>`;
+    } else { nip05El.innerHTML = ''; }
+    $('ac-npub').textContent = acc.npub || '—';
+    $('ac-source').textContent = i18n.t('account.source.' + (acc.source || 'npub'));
+
+    // "Reveal private key" only for nsec-backed accounts.
+    $('ac-reveal-btn').classList.toggle('hidden', acc.source !== 'nsec');
+    $('ac-reveal-section').classList.add('hidden');
+    acMasked = false;
+    $('ac-show-toggle').textContent = i18n.t('account.hide');
+  },
+
+  async _copyNpub() {
+    const npub = account.current()?.npub || '';
+    try {
+      await navigator.clipboard.writeText(npub);
+      bus.emit('toast', i18n.t('account.npubCopied'));
+    } catch {
+      bus.emit('toast', i18n.t('profile.copyFailed'));
+    }
+  },
+
+  /** Close this modal and open Settings (which has the profile editor). */
+  _editProfile() {
+    this._hide();
+    document.getElementById('settings-btn')?.click();
+  },
+
+  /**
+   * Reveal the private key inside the modal's styled reveal box (after the
+   * warn-confirm gate). The user copies/downloads explicitly via the buttons.
+   */
+  async _revealInModal() {
+    const nsec = account.revealSecret();
+    if (!nsec) { bus.emit('toast', i18n.t('account.noBackup')); return; }
+    const ok = await dialog.confirm({
+      kind: 'warn',
+      title: i18n.t('account.backupTitle'),
+      message: i18n.t('account.backupReveal'),
+      detail: i18n.t('account.backupRevealDetail'),
+      confirmText: i18n.t('account.reveal'),
+      cancelText: i18n.t('dialog.cancel'),
+    });
+    if (!ok) return;
+    const code = $('ac-reveal-nsec');
+    code.textContent = nsec;
+    code.classList.remove('masked');
+    acMasked = false;
+    $('ac-show-toggle').textContent = i18n.t('account.hide');
+    $('ac-reveal-section').classList.remove('hidden');
+  },
+
+  _toggleAcMask(btn) {
+    acMasked = !acMasked;
+    $('ac-reveal-nsec').classList.toggle('masked', acMasked);
+    btn.textContent = i18n.t(acMasked ? 'account.show' : 'account.hide');
+  },
+
+  async _disconnect() {
+    const holdsSecret = !!account.revealSecret();
+    const acc = account.current();
+    const message = holdsSecret && acc?.source === 'nsec'
+      ? i18n.t('account.disconnectWarn')
+      : i18n.t('settings.accountDisconnect');
+    const ok = await dialog.confirm({
+      kind: 'danger',
+      destructiveDanger: true,
+      title: i18n.t('settings.accountDisconnect'),
+      message,
+      detail: i18n.t('account.disconnectDetail'),
+      confirmText: i18n.t('settings.accountDisconnect'),
+    });
+    if (!ok) return;
+    account.disconnect();
+    bus.emit('toast', i18n.t('toast.accountDisconnected'));
+    this._hide();
   },
 
   /* ---------- Step 1 → routing ---------- */
@@ -235,4 +429,16 @@ export const accountModal = {
 function skToNsecLive() {
   const { sk } = generateKeys();
   return skToNsec(sk);
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
+}
+
+function escapeAttr(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

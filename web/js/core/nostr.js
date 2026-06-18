@@ -154,7 +154,7 @@ const Gx = 0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798n;
 const Gy = 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8n;
 
 function mod(a, m = P) { a %= m; return a < 0n ? a + m : a; }
-function powMod(a, e, m) { a = mod(a, m); let r = 1n; while (e > 0n) { if (e & 1n) r = (r * a) % m; a = (a * a) % m; e >>= 1n; } return r; }
+function powMod(a, e, m = P) { a = mod(a, m); let r = 1n; while (e > 0n) { if (e & 1n) r = (r * a) % m; a = (a * a) % m; e >>= 1n; } return r; }
 function invMod(a, m = P) { return powMod(a, m - 2n, m); }
 
 // Jacobian point: (X, Y, Z). The point at infinity has Z = 0.
@@ -212,8 +212,16 @@ function normalize(p) {
   return new Pt(mod(p.x * zInv2), mod(p.y * zInv2 * zInv), 1n);
 }
 
-// Scalar mult via simple left-to-right double-and-add.
+// Scalar mult via simple left-to-right double-and-add. Returns the X-only
+// coordinate (what Nostr identity needs).
 function scalarMul(k, point) {
+  const r = scalarMulPoint(k, point);
+  return r.x;
+}
+
+// Full-point scalar multiplication — returns a normalized affine Pt (x, y, 1).
+// Needed for ECDH (we need the shared point's x) and Schnorr (R lift + verify).
+function scalarMulPoint(k, point) {
   let R = ZERO;
   const bits = [];
   let kk = k;
@@ -236,7 +244,7 @@ function validSecret(sk) {
 /** Derive the 32-byte X-only public key for a private key BigInt. */
 export function pubkeyFromSecret(sk) {
   if (!validSecret(sk)) throw new Error('invalid secret key');
-  const point = scalarMul(sk, G);
+  const point = scalarMulPoint(sk, G);
   if (point.z === 0n) throw new Error('pubkey derivation failed');
   // Nostr uses the x coordinate (32 bytes) as the public key.
   return point.x;
@@ -296,6 +304,257 @@ export function keysFromNsec(nsec) {
 /** Convenience: human-friendly hex of any 32-byte key. */
 export function toHex(bytes) { return hexFromBytes(bytes); }
 export function fromHex(hex) { return bytesFromHex(hex); }
+
+/* =====================================================================
+ * BIP-340 Schnorr signatures (used by Nostr event signing) + ECDH.
+ *
+ * secp256k1 has prime p with p % 4 === 3, so a square root mod p is
+ *   y = w^((p+1)/4)  where w = x³ + 7. We pick the even y (BIP-340).
+ * ===================================================================== */
+
+// secp256k1 curve constant b = 7 (B is already declared at the top of the
+// secp256k1 section as `const B = 7n`; reused here for liftX).
+const P_PLUS1_DIV4 = (P + 1n) / 4n;
+
+/** Lift an X coordinate to an even-Y point on the curve. Returns a Pt or null. */
+function liftX(x) {
+  if (x >= P) return null;
+  const c = mod(x * x * x + B);
+  let y = powMod(c, P_PLUS1_DIV4);          // y = c^((p+1)/4)
+  if (mod(y * y) !== c) return null;        // not on curve
+  if (y % 2n !== 0n) y = P - y;             // enforce even Y
+  return new Pt(x, y, 1n);
+}
+
+/**
+ * Tagged hash per BIP-340: SHA256(SHA256(tag) || SHA256(tag) || msg).
+ * The tag is hashed once and cached, then prepended twice — NOT the raw tag
+ * bytes. This is the part most pure-JS implementations get wrong.
+ */
+const _tagHashCache = new Map();
+async function taggedHash(tag, msgBytes) {
+  let tagHash = _tagHashCache.get(tag);
+  if (!tagHash) {
+    tagHash = await sha256Bytes(new TextEncoder().encode(tag));
+    _tagHashCache.set(tag, tagHash);
+  }
+  const data = new Uint8Array(tagHash.length * 2 + msgBytes.length);
+  data.set(tagHash, 0);
+  data.set(tagHash, tagHash.length);
+  data.set(msgBytes, tagHash.length * 2);
+  return bigFromBytesBE(await sha256Bytes(data));
+}
+
+/**
+ * BIP-340 Schnorr sign. Returns a 64-byte signature (R || s).
+ *   auxRand: 32 random bytes (the "t" masking). Caller supplies so signing
+ *            is deterministic-ish but still resistant to side channels.
+ */
+export async function schnorrSign(messageHash32, skBytes, auxRand) {
+  if (!(messageHash32 instanceof Uint8Array) || messageHash32.length !== 32) throw new Error('schnorr: msg hash must be 32 bytes');
+  if (!(skBytes instanceof Uint8Array) || skBytes.length !== 32) throw new Error('schnorr: sk must be 32 bytes');
+  if (!(auxRand instanceof Uint8Array) || auxRand.length !== 32) throw new Error('schnorr: aux must be 32 bytes');
+
+  let d = bigFromBytesBE(skBytes);
+  if (!validSecret(d)) throw new Error('schnorr: invalid secret key');
+  // Get the actual full point d·G — we need its Y to decide whether to negate d.
+  const dG = scalarMulPoint(d, G);
+  if (dG.z === 0n) throw new Error('schnorr: d*G is infinity');
+  // Pk is the X-only pubkey = dG.x. The even-Y representative is liftX(dG.x).
+  const Pk = liftX(mod(dG.x));
+  if (!Pk) throw new Error('schnorr: pubkey lift failed');
+  // If the actual d·G has odd Y, negate d so the even-Y lift is the correct P.
+  // After negation, d'·G = -d·G which has the same X but even Y.
+  if (mod(dG.y) % 2n !== 0n) d = N - d;
+
+  let t = (await taggedHash('BIP0340/aux', auxRand));
+  const tBE = bytesBEFromBig(t);
+  const dBE = bytesBEFromBig(d);
+  const tXorD = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) tXorD[i] = tBE[i] ^ dBE[i];
+
+  const k0 = (await concatAndHash('BIP0340/nonce', tXorD, bytesBEFromBig(Pk.x), messageHash32));
+  if (mod(k0) === 0n) throw new Error('schnorr: k=0 failure');
+  let k = mod(k0, N);
+  const R = scalarMulPoint(k, G);
+  if (R.y % 2n !== 0n) k = N - k;             // R must have even Y
+
+  const e = (await concatAndHash('BIP0340/challenge', bytesBEFromBig(R.x), bytesBEFromBig(Pk.x), messageHash32));
+  const s = mod(k + mod(e, N) * d, N);
+  const sig = new Uint8Array(64);
+  sig.set(bytesBEFromBig(R.x), 0);
+  sig.set(bytesBEFromBig(s), 32);
+  return sig;
+}
+
+async function concatAndHash(tag, ...parts) {
+  const total = parts.reduce((s, p) => s + p.length, 0);
+  const data = new Uint8Array(total);
+  let off = 0;
+  for (const p of parts) { data.set(p, off); off += p.length; }
+  return taggedHash(tag, data);
+}
+
+/** BIP-340 Schnorr verify. Returns true if `sig` is valid for `pk`/`msgHash`. */
+export async function schnorrVerify(messageHash32, pkBytes, sigBytes) {
+  if (!(pkBytes instanceof Uint8Array) || pkBytes.length !== 32) return false;
+  if (!(sigBytes instanceof Uint8Array) || sigBytes.length !== 64) return false;
+  const px = bigFromBytesBE(pkBytes);
+  const Pk = liftX(px);
+  if (!Pk) return false;
+  const r = bigFromBytesBE(sigBytes.subarray(0, 32));
+  const s = bigFromBytesBE(sigBytes.subarray(32));
+  if (r >= P || s >= N) return false;
+  const e = (await concatAndHash('BIP0340/challenge', bytesBEFromBig(r), pkBytes, messageHash32));
+  const eMod = mod(e, N);
+  // s·G + e·Pk should equal R (even-Y). We compute s·G − e·P and check X == r.
+  const sG = scalarMulPoint(s, G);
+  const eP = scalarMulPoint(eMod, Pk);
+  // Negate eP (affine, Z=1): (x, −y mod p).
+  const negE = new Pt(eP.x, mod(P - eP.y), 1n);
+  const R = ptAdd(sG, negE);   // sG - eP
+  if (R.z === 0n) return false;
+  return mod(R.x) === r;
+}
+
+/* =====================================================================
+ * ECDH (X-only) — shared secret for NIP-44.
+ * Returns the X coordinate of sk·peerPk. NIP-44 then HKDFs this.
+ * ===================================================================== */
+
+export function ecdh(skBytes, peerPkBytes) {
+  if (!(skBytes instanceof Uint8Array) || skBytes.length !== 32) throw new Error('ecdh: sk must be 32 bytes');
+  if (!(peerPkBytes instanceof Uint8Array) || peerPkBytes.length !== 32) throw new Error('ecdh: pk must be 32 bytes');
+  const sk = bigFromBytesBE(skBytes);
+  if (!validSecret(sk)) throw new Error('ecdh: invalid secret key');
+  const x = bigFromBytesBE(peerPkBytes);
+  const Pk = liftX(x);
+  if (!Pk) throw new Error('ecdh: peer pubkey not on curve');
+  const shared = scalarMulPoint(sk, Pk);
+  return bytesBEFromBig(shared.x);   // 32-byte X-only shared secret
+}
+
+/* =====================================================================
+ * NIP-01 event serialization + signing.
+ * ===================================================================== */
+
+const NIP01_INT_FIELDS = ['created_at', 'kind'];
+
+function serializeEvent(ev) {
+  // Canonical JSON per NIP-01: [0, pubkey, created_at, kind, tags, content]
+  return JSON.stringify([
+    0,
+    ev.pubkey,
+    ev.created_at,
+    ev.kind,
+    ev.tags || [],
+    ev.content || '',
+  ]);
+}
+
+/**
+ * Compute the event id (the SHA-256 of its canonical serialization) and sign
+ * it locally with the supplied secret key (BIP-340 Schnorr). Returns a full,
+ * publish-ready event { id, pubkey, created_at, kind, tags, content, sig }.
+ */
+export async function finishEvent(unsignedEvent, skBytes) {
+  const sk = bigFromBytesBE(skBytes);
+  if (!validSecret(sk)) throw new Error('finishEvent: invalid secret key');
+  const pkBigInt = pubkeyFromSecret(sk);
+  const pkBytes = bytesBEFromBig(pkBigInt);
+  const ev = {
+    pubkey: toHex(pkBytes),
+    created_at: unsignedEvent.created_at ?? Math.floor(Date.now() / 1000),
+    kind: unsignedEvent.kind,
+    tags: unsignedEvent.tags || [],
+    content: unsignedEvent.content || '',
+  };
+  const idHex = await sha256Hex(new TextEncoder().encode(serializeEvent(ev)));
+  ev.id = idHex;
+  const aux = randomBytes(32);
+  ev.sig = hexFromBytes(await schnorrSign(hexToBytes(idHex), skBytes, aux));
+  return ev;
+}
+
+/* ---- hashing helpers (WebCrypto with a pure-JS fallback) ---- */
+
+let _subtle = null;
+try { _subtle = (globalThis.crypto && globalThis.crypto.subtle) || null; } catch {}
+
+async function sha256Bytes(data) {
+  if (_subtle) {
+    const digest = await _subtle.digest('SHA-256', data);
+    return new Uint8Array(digest);
+  }
+  return sha256BytesPure(data);
+}
+
+async function sha256Hex(data) {
+  return hexFromBytes(await sha256Bytes(data));
+}
+
+function hexToBytes(hex) {
+  if (hex.length % 2) throw new Error('hex: odd length');
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.slice(2 * i, 2 * i + 2), 16);
+  return out;
+}
+
+/* ---- minimal pure-JS SHA-256 (offline / file:// fallback) ---- */
+export function __sha256Pure(data) { return sha256BytesPure(data); }
+function sha256BytesPure(data) {
+  // Standard FIPS 180-4 implementation. Only used if crypto.subtle is absent.
+  const K = new Uint32Array([
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2,
+  ]);
+  const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+  const H = new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);
+
+  const l = data.length;
+  const bitLen = l * 8;
+  const withPad = (((l + 9) + 63) >> 6) << 6;     // total 64-byte blocks
+  const buf = new Uint8Array(withPad);
+  buf.set(data);
+  buf[l] = 0x80;
+  // 64-bit big-endian length in the last 8 bytes
+  const dv = new DataView(buf.buffer);
+  dv.setUint32(withPad - 4, bitLen >>> 0, false);
+  dv.setUint32(withPad - 8, Math.floor(bitLen / 0x100000000) >>> 0, false);
+
+  const w = new Uint32Array(64);
+  for (let i = 0; i < withPad; i += 64) {
+    for (let t = 0; t < 16; t++) w[t] = dv.getUint32(i + t * 4, false);
+    for (let t = 16; t < 64; t++) {
+      const s0 = rotr(w[t - 15], 7) ^ rotr(w[t - 15], 18) ^ (w[t - 15] >>> 3);
+      const s1 = rotr(w[t - 2], 17) ^ rotr(w[t - 2], 19) ^ (w[t - 2] >>> 10);
+      w[t] = (w[t - 16] + s0 + w[t - 7] + s1) >>> 0;
+    }
+    let [a,b,c,d,e,f,g,h] = H;
+    for (let t = 0; t < 64; t++) {
+      const S1 = rotr(e,6) ^ rotr(e,11) ^ rotr(e,25);
+      const ch = (e & f) ^ (~e & g);
+      const t1 = (h + S1 + ch + K[t] + w[t]) >>> 0;
+      const S0 = rotr(a,2) ^ rotr(a,13) ^ rotr(a,22);
+      const mj = (a & b) ^ (a & c) ^ (b & c);
+      const t2 = (S0 + mj) >>> 0;
+      h = g; g = f; f = e; e = (d + t1) >>> 0;
+      d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+    }
+    H[0] = (H[0] + a) >>> 0; H[1] = (H[1] + b) >>> 0; H[2] = (H[2] + c) >>> 0; H[3] = (H[3] + d) >>> 0;
+    H[4] = (H[4] + e) >>> 0; H[5] = (H[5] + f) >>> 0; H[6] = (H[6] + g) >>> 0; H[7] = (H[7] + h) >>> 0;
+  }
+  const out = new Uint8Array(32);
+  const ov = new DataView(out.buffer);
+  for (let i = 0; i < 8; i++) ov.setUint32(i * 4, H[i], false);
+  return out;
+}
 
 /* ---- BigInt ↔ big-endian bytes ---- */
 

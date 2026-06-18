@@ -18,7 +18,7 @@ import { store } from '../core/store.js';
 import { bus } from '../core/eventbus.js';
 import {
   generateKeys, keysFromNsec, pkToNpub, npubToPk,
-  skToNsec, toHex,
+  skToNsec, nsecToSk, toHex, finishEvent,
 } from '../core/nostr.js';
 
 const NSEC_PREFIX = 'nsec1';
@@ -135,10 +135,61 @@ export const account = {
     return acc?.nsec || null;
   },
 
+  /**
+   * Return the 32-byte secret key if we hold it locally (source === 'nsec').
+   * Returns null for NIP-07 / npub-only accounts (key custody is external).
+   */
+  rawSecret() {
+    const acc = store.getAccount();
+    if (!acc?.nsec) return null;
+    try { return nsecToSk(acc.nsec); } catch { return null; }
+  },
+
+  /**
+   * Sign a Nostr event using the current account.
+   *   - NIP-07 source → delegates to window.nostr.signEvent
+   *   - nsec source   → signs locally via BIP-340 Schnorr
+   *   - npub-only     → rejects (no signing key)
+   * Returns the signed event, or throws.
+   */
+  async signEvent(unsignedEvent) {
+    const acc = this.current();
+    if (!acc) throw new Error('account: not connected');
+    if (acc.source === 'nip07') {
+      const provider = window.nostr;
+      if (!provider?.signEvent) throw new Error('account: NIP-07 signer unavailable');
+      return provider.signEvent(unsignedEvent);
+    }
+    if (acc.source === 'nsec') {
+      const sk = this.rawSecret();
+      if (!sk) throw new Error('account: no local secret key');
+      return finishEvent(unsignedEvent, sk);
+    }
+    throw new Error('account: read-only identity cannot sign');
+  },
+
   /** Remove the stored account. */
   disconnect() {
     store.setAccount(null);
     bus.emit('account:changed');
+  },
+
+  /**
+   * Merge a profile patch into the stored account's `profile` sub-object.
+   * Keeps `displayName` in sync with the profile name when present.
+   * Used by features/profile.js to cache the latest kind-0 metadata.
+   */
+  setProfile(patch) {
+    const acc = store.getAccount();
+    if (!acc) return null;
+    const profile = { ...(acc.profile || {}), ...patch };
+    const next = { ...acc, profile };
+    // Prefer the published profile name as the display name when available.
+    if (patch && (patch.name || patch.displayName)) {
+      next.displayName = patch.displayName || patch.name || acc.displayName;
+    }
+    store.setAccount(next);
+    return next;
   },
 
   shortNpub(value) {

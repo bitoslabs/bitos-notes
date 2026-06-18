@@ -8,6 +8,7 @@
 import { folders } from '../features/folders.js';
 import { notes } from '../features/notes.js';
 import { account } from '../features/account.js';
+import { profile } from '../features/profile.js';
 import { i18n } from '../core/i18n.js';
 import { bus } from '../core/eventbus.js';
 import { store } from '../core/store.js';
@@ -30,13 +31,14 @@ export const sidebar = {
     $('new-folder-btn').addEventListener('click', this._onNewFolder);
     $('folder-sort-btn').addEventListener('click', (e) => this._showSortMenu(e.currentTarget));
     $('search-input').addEventListener('input', (e) => bus.emit('search:changed', e.target.value));
-    // Click on the account bar → set up / manage Nostr identity.
-    $('account-bar').addEventListener('click', () => accountModal.open('choose'));
+    // Click on the account bar → manage (connected) or set up (not connected).
+    $('account-bar').addEventListener('click', () => accountModal.open());
 
     bus.on('notes:changed',  () => this.render());
     bus.on('folders:changed', () => this.render());
     bus.on('locale:changed', () => this.render());
     bus.on('account:changed', () => this.renderAccount());
+    bus.on('profile:changed', () => this.renderAccount());
   },
 
   renderAccount() {
@@ -44,12 +46,25 @@ export const sidebar = {
     const label = $('account-label');
     const email = $('account-email');
     const avatar = $('account-avatar');
+    const nip05Badge = $('account-nip05-badge');
 
     if (acc) {
-      label.textContent = 'Nostr';
-      email.textContent = acc.displayName || acc.npub;
-      avatar.textContent = (acc.npub || 'N').slice(0, 1).toUpperCase();
+      const p = profile.current();
+      const name = (p && (p.displayName || p.name)) || acc.displayName || account.shortNpub(acc.npub || '');
+      label.textContent = name;
+      email.textContent = acc.npub ? account.shortNpub(acc.npub) : '—';
+      // Avatar: picture if available, else the first letter.
+      const picture = p && p.picture;
+      if (picture) {
+        avatar.innerHTML = `<img src="${picture}" alt="" onerror="this.parentNode.textContent='${(name || 'N').slice(0,1).toUpperCase()}'">`;
+      } else {
+        avatar.textContent = (name || 'N').slice(0, 1).toUpperCase();
+      }
       avatar.style.background = 'linear-gradient(135deg, var(--notes-blue), #8b5cf6)';
+      // NIP-05 verified badge.
+      const verified = !!(p && p.nip05 && p.nip05Verified);
+      nip05Badge.classList.toggle('hidden', !verified);
+      if (verified) nip05Badge.title = (p && p.nip05) || '';
       return;
     }
 
@@ -57,6 +72,7 @@ export const sidebar = {
     email.textContent = '-';
     avatar.textContent = 'N';
     avatar.style.background = '';                                 // keep default avatar background
+    nip05Badge.classList.add('hidden');
   },
 
   /** Select a folder; persists + notifies the rest of the app. */

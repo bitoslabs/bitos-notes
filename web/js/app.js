@@ -7,12 +7,16 @@
 import { i18n } from './core/i18n.js';
 import { theme } from './core/theme.js';
 import { router } from './core/router.js';
+import { store } from './core/store.js';
+import { sync } from './core/sync.js';
 import { account } from './features/account.js';
+import { profile } from './features/profile.js';
 import { editor } from './features/editor.js';
 import { sidebar } from './ui/sidebar.js';
 import { noteList } from './ui/notelist.js';
 import { settings } from './ui/settings.js';
 import { accountModal } from './ui/account.js';
+import { syncStatus } from './ui/sync.js';
 import { bus } from './core/eventbus.js';
 
 async function boot() {
@@ -22,28 +26,39 @@ async function boot() {
   // 2. i18n (synchronous: locales are static ES imports).
   i18n.setLocale(i18n.detect());
 
-  // 3. Core infrastructure.
+  // 3. Hydrate IndexedDB-backed caches (notes + folders) before any read.
+  //    Migrates legacy localStorage data on the first run.
+  try { await store.init(); } catch (e) { console.error('[boot] store.init failed', e); }
+
+  // 4. Core infrastructure.
   router.init();
 
-  // 4. UI modules (register DOM handlers).
+  // 5. UI modules (register DOM handlers).
   sidebar.init();
   sidebar.renderAccount();
   noteList.init();
   editor.init();
   settings.init();
   accountModal.init();
+  syncStatus.init();
 
-  // 5. Initial render.
+  // 6. Initial render.
   sidebar.render();
   noteList.render();
 
-  // 6. Wire cross-module events (kept here so modules stay decoupled).
+  // 7. Wire cross-module events (kept here so modules stay decoupled).
   wireEvents();
 
-  // 7. Restore last-opened note (desktop nicety).
+  // 8. Start Nostr sync (no-op if no account; connects to relays otherwise).
+  try { sync.init(); } catch (e) { console.error('[boot] sync.init failed', e); }
+
+  // 8b. Load Nostr profile (best-effort; no-op if no account).
+  try { profile.init(); } catch (e) { console.error('[boot] profile.init failed', e); }
+
+  // 9. Restore last-opened note (desktop nicety).
   restoreSession();
 
-  // 8. PWA: register service worker for offline.
+  // 10. PWA: register service worker for offline.
   registerSW();
 }
 
@@ -84,15 +99,12 @@ function wireEvents() {
 function restoreSession() {
   // On desktop, reopen the last note (if it still exists) for a warm welcome.
   if (router.mode === 'desktop') {
-    import('./core/store.js').then(({ store }) => {
-      const { lastNote } = store.getPrefs();
-      // editor.currentId is checked implicitly via noteList.select
-      if (lastNote) {
-        import('./features/notes.js').then(({ notes }) => {
-          if (notes.find(lastNote)) noteList.select(lastNote);
-        });
-      }
-    });
+    const { lastNote } = store.getPrefs();
+    if (lastNote) {
+      import('./features/notes.js').then(({ notes }) => {
+        if (notes.find(lastNote)) noteList.select(lastNote);
+      });
+    }
   }
 }
 

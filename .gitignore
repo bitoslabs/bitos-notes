@@ -31,3 +31,9 @@ pnpm-debug.log*
 # Test / coverage
 coverage/
 test_results/
+
+# local deploy scripts
+deploy-web.sh
+web.conf
+
+test/
