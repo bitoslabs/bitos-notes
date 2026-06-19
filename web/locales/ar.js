@@ -47,6 +47,7 @@ export default {
   "editor.bullet": "قائمة نقطية",
   "editor.number": "قائمة مرقمة",
   "editor.checklist": "إدراج خانة",
+  "editor.draw": "رسم",
   "editor.pin": "تثبيت",
   "editor.unpin": "إلغاء التثبيت",
   "editor.delete": "حذف",
@@ -217,5 +218,17 @@ export default {
   "about.tagline": "ملاحظات محلية مع مزامنة Nostr. بياناتك تبقى على جهازك — Nostr هو مجرد الناقل.",
   "about.source": "الكود المصدري ↗",
   "about.issues": "الإبلاغ عن مشكلة ↗",
-  "about.nostr": "بروتوكول Nostr ↗"
+  "about.nostr": "بروتوكول Nostr ↗",
+
+  /* ---- Draw / shapes ---- */
+  "draw.select": "تحديد",
+  "draw.done": "تم",
+  "draw.rect": "مستطيل",
+  "draw.ellipse": "بيضاوي",
+  "draw.line": "خط",
+  "draw.arrow": "سهم",
+  "draw.pen": "قلم",
+  "draw.color": "لون",
+  "draw.strokeWidth": "سماكة الخط",
+  "draw.deleteShape": "حذف الشكل"
 };

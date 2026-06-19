@@ -47,6 +47,7 @@ export default {
   "editor.bullet": "รายการแบบจุด",
   "editor.number": "รายการแบบลำดับเลข",
   "editor.checklist": "เช็คลิสต์",
+  "editor.draw": "วาด",
   "editor.pin": "ปักหมุด",
   "editor.unpin": "ถอนหมุด",
   "editor.delete": "ลบ",
@@ -234,5 +235,17 @@ export default {
   "about.tagline": "บันทึกในเครื่องพร้อมซิงค์ Nostr ข้อมูลของคุณอยู่บนอุปกรณ์ — Nostr เป็นเพียงตัวส่งข้อมูล",
   "about.source": "ซอร์สโค้ด ↗",
   "about.issues": "รายงานปัญหา ↗",
-  "about.nostr": "โปรโตคอล Nostr ↗"
+  "about.nostr": "โปรโตคอล Nostr ↗",
+
+  /* ---- Draw / shapes ---- */
+  "draw.select": "เลือก",
+  "draw.done": "เสร็จ",
+  "draw.rect": "สี่เหลี่ยม",
+  "draw.ellipse": "วงรี",
+  "draw.line": "เส้น",
+  "draw.arrow": "ลูกศร",
+  "draw.pen": "ปากกา",
+  "draw.color": "สี",
+  "draw.strokeWidth": "ความหนาเส้น",
+  "draw.deleteShape": "ลบรูปร่าง"
 };

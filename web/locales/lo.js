@@ -47,6 +47,7 @@ export default {
   "editor.bullet": "ລາຍການຈຸດ",
   "editor.number": "ລາຍການເລກລຳດັບ",
   "editor.checklist": "ແຊັກລາຍການ",
+  "editor.draw": "ແຕ້ມ",
   "editor.pin": "ປັກໝຸດ",
   "editor.unpin": "ຖອດປັກໝຸດ",
   "editor.delete": "ລຶບ",
@@ -234,5 +235,17 @@ export default {
   "about.tagline": "ບັນທຶກທ້ອງຖິ່ນພ້ອມຊິງຄ Nostr ຂໍ້ມູນຂອງທ່ານຢູ່ໃນອຸປະກອນ — Nostr ເປັນແຄ່ພຽງຕົວສົ່ງຂໍ້ມູນ",
   "about.source": "ຊອດໂຄ້ດ ↗",
   "about.issues": "ລາຍງານບັນຫາ ↗",
-  "about.nostr": "ໂປຣໂຕຄອນ Nostr ↗"
+  "about.nostr": "ໂປຣໂຕຄອນ Nostr ↗",
+
+  /* ---- Draw / shapes ---- */
+  "draw.select": "ເລືອກ",
+  "draw.done": "ສຳເລັດ",
+  "draw.rect": "ສີ່ຫຼ່ຽມ",
+  "draw.ellipse": "ຮູບວົງຮີ",
+  "draw.line": "ເສັ້ນ",
+  "draw.arrow": "ລູກສອນ",
+  "draw.pen": "ປາກກາ",
+  "draw.color": "ສີ",
+  "draw.strokeWidth": "ຄວາມໜາຂອງເສັ້ນ",
+  "draw.deleteShape": "ລຶບຮູບຮ່າງ"
 };

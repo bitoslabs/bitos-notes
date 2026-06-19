@@ -47,6 +47,7 @@ export default {
   "editor.bullet": "Liste à puces",
   "editor.number": "Liste numérotée",
   "editor.checklist": "Case à cocher",
+  "editor.draw": "Dessiner",
   "editor.pin": "Épingler",
   "editor.unpin": "Désépingler",
   "editor.delete": "Supprimer",
@@ -217,5 +218,17 @@ export default {
   "about.tagline": "Notes locales avec sync Nostr. Vos données restent sur votre appareil — Nostr n'est que le transport.",
   "about.source": "Code source ↗",
   "about.issues": "Signaler un problème ↗",
-  "about.nostr": "Protocole Nostr ↗"
+  "about.nostr": "Protocole Nostr ↗",
+
+  /* ---- Draw / shapes ---- */
+  "draw.select": "Sélectionner",
+  "draw.done": "Terminé",
+  "draw.rect": "Rectangle",
+  "draw.ellipse": "Ellipse",
+  "draw.line": "Ligne",
+  "draw.arrow": "Flèche",
+  "draw.pen": "Stylo",
+  "draw.color": "Couleur",
+  "draw.strokeWidth": "Épaisseur du trait",
+  "draw.deleteShape": "Supprimer la forme"
 };

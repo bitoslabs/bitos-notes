@@ -49,6 +49,7 @@ export default {
   "editor.bullet": "Bulleted list",
   "editor.number": "Numbered list",
   "editor.checklist": "Insert checklist item",
+  "editor.draw": "Draw shapes",
   "editor.pin": "Pin",
   "editor.unpin": "Unpin",
   "editor.delete": "Delete",
@@ -244,5 +245,17 @@ export default {
   "about.tagline": "Local-first notes with Nostr sync. Your data lives on your device — Nostr is just the transport.",
   "about.source": "Source code ↗",
   "about.issues": "Report issue ↗",
-  "about.nostr": "Nostr protocol ↗"
+  "about.nostr": "Nostr protocol ↗",
+
+  /* ---- Draw / shapes ---- */
+  "draw.select": "Select",
+  "draw.done": "Done",
+  "draw.rect": "Rectangle",
+  "draw.ellipse": "Ellipse",
+  "draw.line": "Line",
+  "draw.arrow": "Arrow",
+  "draw.pen": "Pen",
+  "draw.color": "Color",
+  "draw.strokeWidth": "Stroke width",
+  "draw.deleteShape": "Delete shape"
 };

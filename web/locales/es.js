@@ -47,6 +47,7 @@ export default {
   "editor.bullet": "Lista",
   "editor.number": "Lista numerada",
   "editor.checklist": "Casilla de verificación",
+  "editor.draw": "Dibujar",
   "editor.pin": "Fijar",
   "editor.unpin": "Soltar",
   "editor.delete": "Eliminar",
@@ -217,5 +218,17 @@ export default {
   "about.tagline": "Notas locales con sincronización Nostr. Tus datos viven en tu dispositivo — Nostr es solo el transporte.",
   "about.source": "Código fuente ↗",
   "about.issues": "Reportar problema ↗",
-  "about.nostr": "Protocolo Nostr ↗"
+  "about.nostr": "Protocolo Nostr ↗",
+
+  /* ---- Draw / shapes ---- */
+  "draw.select": "Seleccionar",
+  "draw.done": "Listo",
+  "draw.rect": "Rectángulo",
+  "draw.ellipse": "Elipse",
+  "draw.line": "Línea",
+  "draw.arrow": "Flecha",
+  "draw.pen": "Lápiz",
+  "draw.color": "Color",
+  "draw.strokeWidth": "Grosor del trazo",
+  "draw.deleteShape": "Eliminar forma"
 };

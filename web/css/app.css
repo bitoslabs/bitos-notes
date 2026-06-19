@@ -715,6 +715,130 @@ svg { width: 100%; height: 100%; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .spin { animation: spin 0.9s linear infinite; }
 
+/* ============================================================
+   Draw / shapes — embedded vector drawings inside a note
+   ============================================================ */
+
+/* The embedded drawing object. Atomic while typing (contenteditable=false). */
+.editor-body-input .shape-block {
+  position: relative;
+  margin: 16px auto;
+  width: 100%;
+  max-width: 600px;
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  border: 1px solid var(--divider);
+  overflow: hidden;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.editor-body-input .shape-block.editing {
+  border-color: var(--notes-blue);
+  box-shadow: 0 0 0 3px var(--notes-blue-glow);
+}
+.shape-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: none;            /* let pointer events drive drawing */
+}
+.shape-svg rect, .shape-svg ellipse, .shape-svg line,
+.shape-svg polyline, .shape-svg polygon { vector-effect: non-scaling-stroke; }
+.shape-svg .interaction-layer { pointer-events: all; }
+
+/* Selection chrome — themed by the accent colour, not hard-coded. */
+.shape-svg .sel-box {
+  fill: none; stroke: var(--notes-blue); stroke-width: 1; stroke-dasharray: 4 3;
+  pointer-events: none;
+}
+.shape-svg .sel-outline {
+  fill: none; stroke: var(--notes-blue); stroke-width: 1; opacity: 0.55;
+  pointer-events: none;
+}
+.shape-svg .handle {
+  fill: #fff; stroke: var(--notes-blue); stroke-width: 1.5; rx: 1.5;
+}
+.shape-svg .handle[data-corner="nw"], .shape-svg .handle[data-corner="se"] { cursor: nwse-resize; }
+.shape-svg .handle[data-corner="ne"], .shape-svg .handle[data-corner="sw"] { cursor: nesw-resize; }
+
+/* Marquee (rubber-band) box — classic marching-ants look. */
+.shape-svg .marquee {
+  fill: var(--notes-blue-soft); stroke: var(--notes-blue); stroke-width: 1;
+  stroke-dasharray: 4 3; pointer-events: none;
+}
+
+/* While drawing, prevent prose text selection. */
+body.draw-active .editor-body-input,
+body.draw-active .editor-title-input { user-select: none; -webkit-user-select: none; }
+
+/* Floating tool strip above the active block. */
+.draw-tools {
+  position: fixed;            /* viewport-relative: stays glued to the block */
+  z-index: 50;
+  top: 0; left: 0;            /* JS positions it; set a baseline to avoid a flash top-left */
+  width: max-content;         /* shrink to content instead of stretching full-width */
+  max-width: 92vw;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-toast);
+  flex-wrap: wrap;
+}
+.dt-tools { display: flex; align-items: center; gap: 2px; }
+.dt-sep { width: 1px; height: 20px; background: var(--divider); margin: 0 3px; }
+.dt-btn {
+  min-width: 30px; height: 30px; padding: 0 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm); color: var(--text-secondary);
+  background: transparent; border: 0; cursor: pointer;
+}
+.dt-btn:hover { background: var(--hover); color: var(--text-primary); }
+.dt-btn.active { background: var(--notes-blue-soft); color: var(--notes-blue); }
+.dt-ico { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round; }
+
+.dt-swatches { display: flex; align-items: center; gap: 3px; }
+.dt-sw {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--sw); border: 2px solid transparent;
+  cursor: pointer; padding: 0;
+}
+.dt-sw:hover { transform: scale(1.12); }
+.dt-sw.active { border-color: var(--text-primary); box-shadow: 0 0 0 2px var(--bg-elevated), 0 0 0 3px var(--text-primary); }
+
+.dt-widths { display: flex; align-items: center; gap: 2px; }
+.dt-w {
+  width: 26px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm); border: 0; background: transparent; cursor: pointer;
+}
+.dt-w span { width: 16px; background: var(--text-secondary); border-radius: 2px; }
+.dt-w:hover { background: var(--hover); }
+.dt-w.active span { background: var(--notes-blue); }
+
+.dt-del {
+  margin-left: 4px; min-width: 30px; height: 30px; padding: 0 8px;
+  border-radius: var(--radius-sm); border: 0; cursor: pointer;
+  color: var(--notes-red); background: transparent; font-size: 14px;
+}
+.dt-del:hover { background: var(--hover); }
+
+.dt-done {
+  margin-left: 6px; height: 30px; padding: 0 14px; border-radius: var(--radius-sm);
+  border: 0; cursor: pointer; font-weight: 600; color: #fff;
+  background: var(--notes-blue); font-size: 13px;
+}
+.dt-done:hover { filter: brightness(1.05); }
+
+@media (max-width: 640px) {
+  .draw-tools { gap: 2px; padding: 4px 6px; }
+  .dt-btn { min-width: 28px; height: 28px; }
+  .dt-done { padding: 0 10px; }
+}
+
 /* ---- NIP-05 verified badge (sidebar) ---- */
 .nip05-badge {
   margin-left: auto; flex-shrink: 0;
