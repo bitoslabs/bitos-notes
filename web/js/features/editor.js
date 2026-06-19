@@ -11,6 +11,7 @@
  */
 
 import { notes, stripHtml } from './notes.js';
+import { draw } from './draw.js';
 import { i18n } from '../core/i18n.js';
 import { bus } from '../core/eventbus.js';
 
@@ -49,6 +50,7 @@ export const editor = {
   /** Load a note into the editor. */
   load(note) {
     if (!note) return this.clear();
+    draw.close();          // tear down any draw overlay from the previous note
     currentId = note.id;
 
     $('editor-title').textContent = note.title || '';
@@ -72,6 +74,7 @@ export const editor = {
 
   /** Show the empty state and detach. */
   clear() {
+    draw.close();          // exit draw mode when leaving a note
     currentId = null;
     $('editor-title').textContent = '';
     $('editor-body').innerHTML = '';
@@ -79,6 +82,10 @@ export const editor = {
     $('editor-date').textContent = '';
     this._showEmpty(true);
   },
+
+  /** Public hook for feature modules (e.g. draw) to trigger the debounced
+   *  save. Wraps the private _scheduleSave() so callers don't depend on it. */
+  requestSave() { this._scheduleSave(); },
 
   /** Re-render meta after a pin toggle or locale change. */
   refreshMeta() {
@@ -93,6 +100,7 @@ export const editor = {
   /** Execute a toolbar command (or insert a checklist row). */
   execCommand(cmd) {
     if (cmd === 'checklist') return this.insertChecklistRow();
+    if (cmd === 'draw') return draw.toggle($('editor-body'));
     if (cmd === 'title') {
       // Toggle an <h3> on the current line (Apple's "Title" style).
       document.execCommand('formatBlock', false, 'h3');
@@ -252,7 +260,7 @@ export const editor = {
   /** Clear stray <br>/empty wrappers so the :empty body placeholder can show. */
   _cleanEmptyBody() {
     const body = $('editor-body');
-    if (body.querySelector('.check-item')) return;
+    if (body.querySelector('.check-item, .shape-block')) return;
     if (body.textContent.trim() || body.querySelector('img,hr')) return;
     if (body.innerHTML !== '') body.innerHTML = '';
   },

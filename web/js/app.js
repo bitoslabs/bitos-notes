@@ -12,6 +12,7 @@ import { sync } from './core/sync.js';
 import { account } from './features/account.js';
 import { profile } from './features/profile.js';
 import { editor } from './features/editor.js';
+import { draw } from './features/draw.js';
 import { sidebar } from './ui/sidebar.js';
 import { noteList } from './ui/notelist.js';
 import { settings } from './ui/settings.js';
@@ -38,6 +39,7 @@ async function boot() {
   sidebar.renderAccount();
   noteList.init();
   editor.init();
+  draw.init();
   settings.init();
   accountModal.init();
   syncStatus.init();
@@ -110,9 +112,13 @@ function restoreSession() {
 }
 
 function registerSW() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
-  }
+  if (!('serviceWorker' in navigator)) return;
+  // Skip the service worker on local dev origins so the browser always hits
+  // the live filesystem (no stale cached assets while iterating). Production
+  // origins still get the full offline cache.
+  const host = location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]') return;
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
 
 /** Populate the About section with the app version + build label. */
