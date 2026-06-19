@@ -819,6 +819,50 @@ body.draw-active .editor-title-input { user-select: none; -webkit-user-select: n
 .dt-w:hover { background: var(--hover); }
 .dt-w.active span { background: var(--notes-blue); }
 
+/* Font-size presets + bold/italic toggles (text tool). */
+.dt-fontsizes { display: flex; align-items: center; gap: 2px; }
+.dt-fs {
+  min-width: 30px; height: 30px; padding: 0 7px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm); border: 0; background: transparent; cursor: pointer;
+  color: var(--text-secondary); font-size: 11px; font-weight: 600;
+}
+.dt-fs:hover { background: var(--hover); color: var(--text-primary); }
+.dt-fs.active { background: var(--notes-blue-soft); color: var(--notes-blue); }
+
+.dt-toggle {
+  min-width: 30px; height: 30px; padding: 0 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm); border: 0; background: transparent; cursor: pointer;
+  color: var(--text-secondary); font-size: 14px;
+}
+.dt-toggle b, .dt-toggle i { font-size: 14px; pointer-events: none; }
+.dt-toggle:hover { background: var(--hover); color: var(--text-primary); }
+.dt-toggle.active { background: var(--notes-blue-soft); color: var(--notes-blue); }
+
+/* Inline text editor overlay layered over the SVG. */
+.editor-body-input .shape-block { position: relative; }
+.text-editor {
+  position: absolute;
+  z-index: 5;
+  min-width: 40px;
+  padding: 2px 4px;
+  margin: 0;
+  border: 1px solid var(--notes-blue);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text-primary);
+  font-family: inherit;
+  line-height: 1.2;
+  resize: none;
+  overflow: hidden;
+  outline: none;
+  box-shadow: 0 0 0 3px var(--notes-blue-glow);
+  box-sizing: content-box;
+}
+[data-theme="dark"] .text-editor { background: rgba(44, 44, 46, 0.95); }
+.text-editor::placeholder { color: var(--text-tertiary); }
+
 .dt-del {
   margin-left: 4px; min-width: 30px; height: 30px; padding: 0 8px;
   border-radius: var(--radius-sm); border: 0; cursor: pointer;
@@ -832,6 +876,31 @@ body.draw-active .editor-title-input { user-select: none; -webkit-user-select: n
   background: var(--notes-blue); font-size: 13px;
 }
 .dt-done:hover { filter: brightness(1.05); }
+
+/* ⚙ Options (gear) button — opens the view-mode / list-style dropdown menu
+   (same shared #popup-menu chrome as the "Sort By" menu). */
+.dt-opt-btn {
+  min-width: 30px; height: 30px; padding: 0 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm); border: 0; cursor: pointer;
+  background: transparent; color: var(--text-secondary);
+}
+.dt-opt-btn:hover { background: var(--hover); color: var(--text-primary); }
+.dt-opt-btn .dt-ico { width: 17px; height: 17px; }
+
+/* Canvas background view modes — painted behind the SVG via the block. */
+.editor-body-input .shape-block[data-view="grid"] {
+  background-color: var(--bg-elevated);
+  background-image:
+    linear-gradient(to right, var(--divider) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--divider) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.editor-body-input .shape-block[data-view="lines"] {
+  background-color: var(--bg-elevated);
+  background-image: linear-gradient(to bottom, var(--divider) 1px, transparent 1px);
+  background-size: 100% 28px;
+}
 
 @media (max-width: 640px) {
   .draw-tools { gap: 2px; padding: 4px 6px; }
