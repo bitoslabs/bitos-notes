@@ -5,6 +5,8 @@ export default {
   "app.title": "บันทึก",
   "nav.folders": "โฟลเดอร์",
   "nav.notes": "บันทึก",
+  "nav.showSidebar": "แสดงแถบด้านข้าง",
+  "nav.hideSidebar": "ซ่อนแถบด้านข้าง",
 
   "folders.title": "โฟลเดอร์",
   "folders.new": "โฟลเดอร์ใหม่",
@@ -48,6 +50,7 @@ export default {
   "editor.number": "รายการแบบลำดับเลข",
   "editor.checklist": "เช็คลิสต์",
   "editor.draw": "วาด",
+  "editor.format": "จัดรูปแบบ",
   "editor.pin": "ปักหมุด",
   "editor.unpin": "ถอนหมุด",
   "editor.delete": "ลบ",
@@ -87,6 +90,9 @@ export default {
   "settings.export": "ส่งออก (.json)",
   "settings.import": "นำเข้า",
   "settings.reset": "รีเซ็ตข้อมูลทั้งหมด",
+  "settings.forceUpdate": "บังคับอัปเดต",
+  "settings.forceUpdatePrompt": "ล้างไฟล์แอปที่แคชไว้และโหลดเวอร์ชันล่าสุดใหม่ไหม?",
+  "settings.forceUpdateDetail": "การทำเช่นนี้จะล้างแคชของแอป ขอให้ service worker อัปเดต และโหลดหน้าใหม่อีกครั้ง",
   "settings.about": "BitOS Notes · เก็บในเครื่อง + ซิงค์ Nostr · v0.1",
 
   "account.invalid": "กุญแจ npub หรือ nsec ไม่ถูกต้อง",

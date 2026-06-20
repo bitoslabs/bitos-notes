@@ -4,7 +4,11 @@
  * Pure data operations. UI rendering lives in ui/notelist.js + ui/editor.js.
  *
  * Note shape:
- *   { id, folder, title, body, pinned, checklist[], createdAt, updatedAt, deletedAt? }
+ *   {
+ *     id, folder, title, body, pinned,
+ *     checklist: legacy flat items[] OR grouped blocks[{ id, items[] }],
+ *     createdAt, updatedAt, deletedAt?
+ *   }
  */
 
 import { store } from '../core/store.js';
@@ -105,9 +109,19 @@ export const notes = {
   /** Toggle a checklist item's done state by index. */
   toggleCheck(id, index) {
     const n = this.find(id);
-    if (!n || !n.checklist[index]) return;
-    n.checklist[index].d = !n.checklist[index].d;
-    this.update(id, { checklist: [...n.checklist] });
+    if (!n) return;
+    const groups = normalizeChecklistGroups(n.checklist);
+    let seen = 0;
+    for (const group of groups) {
+      for (const item of group.items) {
+        if (seen === index) {
+          item.d = !item.d;
+          this.update(id, { checklist: groups });
+          return;
+        }
+        seen += 1;
+      }
+    }
   },
 
   /** Human-readable preview (first ~80 chars of body, no HTML). */
@@ -169,9 +183,38 @@ export function stripHtml(html) {
   return (tmp.textContent || tmp.innerText || '').trim();
 }
 
+export function normalizeChecklistGroups(checklist) {
+  if (!Array.isArray(checklist) || !checklist.length) return [];
+
+  const first = checklist[0];
+  if (first && Array.isArray(first.items)) {
+    return checklist
+      .map((group, index) => ({
+        id: group.id || `legacy-group-${index}`,
+        items: (group.items || [])
+          .map(item => ({ t: item?.t || '', d: !!item?.d }))
+          .filter(item => item.t || item.d),
+      }))
+      .filter(group => group.items.length);
+  }
+
+  const items = checklist
+    .map(item => ({ t: item?.t || '', d: !!item?.d }))
+    .filter(item => item.t || item.d);
+  return items.length ? [{ id: 'legacy-group-0', items }] : [];
+}
+
+export function flattenChecklistItems(checklist) {
+  return normalizeChecklistGroups(checklist).flatMap(group => group.items);
+}
+
+export function hasChecklistContent(checklist) {
+  return flattenChecklistItems(checklist).some(item => item.t.trim());
+}
+
 function noteText(note) {
   const bodyText = stripHtml(note.body);
-  const checklistText = (note.checklist || [])
+  const checklistText = flattenChecklistItems(note.checklist)
     .map(item => item?.t || '')
     .filter(Boolean)
     .join(' ');

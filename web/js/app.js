@@ -18,6 +18,9 @@ import { noteList } from './ui/notelist.js';
 import { settings } from './ui/settings.js';
 import { accountModal } from './ui/account.js';
 import { syncStatus } from './ui/sync.js';
+import { layout } from './ui/layout.js';
+import { bottomBar } from './ui/bottombar.js';
+import { viewport } from './ui/viewport.js';
 import { bus } from './core/eventbus.js';
 
 async function boot() {
@@ -33,6 +36,7 @@ async function boot() {
 
   // 4. Core infrastructure.
   router.init();
+  viewport.init();
 
   // 5. UI modules (register DOM handlers).
   sidebar.init();
@@ -43,6 +47,8 @@ async function boot() {
   settings.init();
   accountModal.init();
   syncStatus.init();
+  layout.init();
+  bottomBar.init();
 
   // 6. Initial render.
   sidebar.render();

@@ -84,6 +84,7 @@ export const settings = {
     $('import-btn').addEventListener('click', () => $('import-file').click());
     $('import-file').addEventListener('change', (e) => this._import(e));
     $('reset-btn').addEventListener('click', () => this._reset());
+    $('force-update-btn')?.addEventListener('click', () => this._forceUpdate());
 
     bus.on('relays:changed', () => this._renderRelays());
     bus.on('locale:changed', () => { this._renderRelays(); this._syncLang(); this.renderAccount(); });
@@ -493,6 +494,34 @@ export const settings = {
       if (!ok) return;
       await store.clearAll();
       location.reload();
+    });
+  },
+
+  _forceUpdate() {
+    dialog.confirm({
+      kind: 'warn',
+      title: i18n.t('settings.forceUpdate'),
+      message: i18n.t('settings.forceUpdatePrompt'),
+      detail: i18n.t('settings.forceUpdateDetail'),
+      confirmText: i18n.t('settings.forceUpdate'),
+      cancelText: i18n.t('dialog.cancel'),
+    }).then(async (ok) => {
+      if (!ok) return;
+
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(async (reg) => {
+            try { await reg.update(); } catch {}
+            try { await reg.unregister(); } catch {}
+          }));
+        }
+        if ('caches' in window) {
+          await Promise.all((await caches.keys()).map((key) => caches.delete(key)));
+        }
+      } finally {
+        location.reload();
+      }
     });
   },
 };

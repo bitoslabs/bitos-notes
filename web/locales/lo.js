@@ -5,6 +5,8 @@ export default {
   "app.title": "ບັນທຶກ",
   "nav.folders": "ໂຟນເດີ",
   "nav.notes": "ບັນທຶກ",
+  "nav.showSidebar": "ສະແດງແຖບຂ້າງ",
+  "nav.hideSidebar": "ເຊື່ອງແຖບຂ້າງ",
 
   "folders.title": "ໂຟນເດີ",
   "folders.new": "ໂຟນເດີໃໝ່",
@@ -48,6 +50,7 @@ export default {
   "editor.number": "ລາຍການເລກລຳດັບ",
   "editor.checklist": "ແຊັກລາຍການ",
   "editor.draw": "ແຕ້ມ",
+  "editor.format": "ຈັດຮູບແບບ",
   "editor.pin": "ປັກໝຸດ",
   "editor.unpin": "ຖອດປັກໝຸດ",
   "editor.delete": "ລຶບ",
@@ -87,6 +90,9 @@ export default {
   "settings.export": "ສົ່ງອອກ (.json)",
   "settings.import": "ນຳເຂົ້າ",
   "settings.reset": "ລ້າງຂໍ້ມູນທັງໝົດ",
+  "settings.forceUpdate": "ບັງຄັບອັບເດດ",
+  "settings.forceUpdatePrompt": "ລ້າງໄຟລ໌ທີ່ແຄດໄວ້ ແລະໂຫຼດລຸ້ນລ່າສຸດຄືນບໍ?",
+  "settings.forceUpdateDetail": "ຈະລຶບແຄດຂອງແອັບ, ຂໍໃຫ້ service worker ອັບເດດ, ແລ້ວໂຫຼດໜ້າໃໝ່.",
   "settings.about": "BitOS Notes · ຈັດເກັບທ້ອງຖິ່ນ + ຊິງຄ໌ Nostr · v0.1",
 
   "account.invalid": "ກະເຈາຍ npub ຫຼື nsec ບໍ່ຖືກຕ້ອງ",

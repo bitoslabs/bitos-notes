@@ -5,6 +5,8 @@ export default {
   "app.title": "Notas",
   "nav.folders": "Carpetas",
   "nav.notes": "Notas",
+  "nav.showSidebar": "Mostrar barra lateral",
+  "nav.hideSidebar": "Ocultar barra lateral",
 
   "folders.title": "Carpetas",
   "folders.new": "Nueva carpeta",
@@ -48,6 +50,7 @@ export default {
   "editor.number": "Lista numerada",
   "editor.checklist": "Casilla de verificación",
   "editor.draw": "Dibujar",
+  "editor.format": "Formato",
   "editor.pin": "Fijar",
   "editor.unpin": "Soltar",
   "editor.delete": "Eliminar",
@@ -77,6 +80,9 @@ export default {
   "settings.export": "Exportar (.json)",
   "settings.import": "Importar",
   "settings.reset": "Restablecer todo",
+  "settings.forceUpdate": "Forzar actualización",
+  "settings.forceUpdatePrompt": "¿Borrar los archivos en caché y cargar la última versión?",
+  "settings.forceUpdateDetail": "Esto elimina la caché actual de la app, pide actualizar el service worker y recarga la página.",
   "settings.about": "BitOS Notes · local-first + sync Nostr · v0.1",
 
   "relays.add": "+ Añadir",

@@ -5,6 +5,8 @@ export default {
   "app.title": "Notes",
   "nav.folders": "Dossiers",
   "nav.notes": "Notes",
+  "nav.showSidebar": "Afficher la barre latérale",
+  "nav.hideSidebar": "Masquer la barre latérale",
 
   "folders.title": "Dossiers",
   "folders.new": "Nouveau dossier",
@@ -48,6 +50,7 @@ export default {
   "editor.number": "Liste numérotée",
   "editor.checklist": "Case à cocher",
   "editor.draw": "Dessiner",
+  "editor.format": "Format",
   "editor.pin": "Épingler",
   "editor.unpin": "Désépingler",
   "editor.delete": "Supprimer",
@@ -77,6 +80,9 @@ export default {
   "settings.export": "Exporter (.json)",
   "settings.import": "Importer",
   "settings.reset": "Tout réinitialiser",
+  "settings.forceUpdate": "Forcer la mise à jour",
+  "settings.forceUpdatePrompt": "Vider les fichiers en cache et recharger la dernière version ?",
+  "settings.forceUpdateDetail": "Cela supprime le cache de l'application, demande une mise à jour du service worker et recharge la page.",
   "settings.about": "BitOS Notes · local-first + sync Nostr · v0.1",
 
   "relays.add": "+ Ajouter",
