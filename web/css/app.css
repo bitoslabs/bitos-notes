@@ -124,12 +124,26 @@ svg { width: 100%; height: 100%; }
   height: 100vh;
   height: 100dvh;
   background: var(--bg-window);
+  transition: grid-template-columns 0.28s var(--pane-ease);
 }
 .pane { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
 
 .pane-folders { background: var(--bg-sidebar); border-right: 1px solid var(--divider); }
 .pane-list    { background: var(--bg-list);    border-right: 1px solid var(--divider); }
 .pane-editor  { background: var(--bg-window); }
+
+/* ---- Sidebar toggle (desktop only) ---- */
+/* Collapsing the folders pane: drop its grid column to 0 and slide it off,
+   macOS Notes style. The pane itself is told to stop painting once collapsed
+   so its content never reflows into zero width. */
+.app.hide-folders { grid-template-columns: 0 var(--list-w) 1fr; }
+.app.hide-folders .pane-folders {
+  width: 0; border-right: 0; opacity: 0; pointer-events: none;
+}
+.pane-folders { transition: opacity 0.2s var(--pane-ease); }
+
+.toggle-folders { flex-shrink: 0; }
+.toggle-folders .ico { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
 /* ---- Titlebar ---- */
 .titlebar { height: 44px; display: flex; align-items: center; padding: 0 16px; gap: 8px; }
@@ -698,7 +712,15 @@ svg { width: 100%; height: 100%; }
 
 /* ---- Mobile-only / desktop-only helpers ---- */
 .mobile-only { display: none; }
-@media (max-width: 860px) { .mobile-only { display: inline-flex; } }
+.desktop-only { display: grid; }
+@media (max-width: 860px) {
+  .mobile-only { display: inline-flex; }
+  .desktop-only { display: none; }
+  /* On mobile the folders pane is an overlay (router-driven); the hide-folders
+     toggle is irrelevant, so neutralise the collapsed state here. */
+  .app.hide-folders { grid-template-columns: 1fr; }
+  .app.hide-folders .pane-folders { width: auto; opacity: 1; pointer-events: auto; }
+}
 @media (max-width: 640px) { .titlebar { display: none; } }
 
 /* env safe areas (notch) */

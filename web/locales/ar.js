@@ -5,6 +5,8 @@ export default {
   "app.title": "الملاحظات",
   "nav.folders": "المجلدات",
   "nav.notes": "الملاحظات",
+  "nav.showSidebar": "إظهار الشريط الجانبي",
+  "nav.hideSidebar": "إخفاء الشريط الجانبي",
 
   "folders.title": "المجلدات",
   "folders.new": "مجلد جديد",

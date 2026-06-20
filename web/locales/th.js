@@ -5,6 +5,8 @@ export default {
   "app.title": "บันทึก",
   "nav.folders": "โฟลเดอร์",
   "nav.notes": "บันทึก",
+  "nav.showSidebar": "แสดงแถบด้านข้าง",
+  "nav.hideSidebar": "ซ่อนแถบด้านข้าง",
 
   "folders.title": "โฟลเดอร์",
   "folders.new": "โฟลเดอร์ใหม่",

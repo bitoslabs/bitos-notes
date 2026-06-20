@@ -18,6 +18,7 @@ import { noteList } from './ui/notelist.js';
 import { settings } from './ui/settings.js';
 import { accountModal } from './ui/account.js';
 import { syncStatus } from './ui/sync.js';
+import { layout } from './ui/layout.js';
 import { bus } from './core/eventbus.js';
 
 async function boot() {
@@ -43,6 +44,7 @@ async function boot() {
   settings.init();
   accountModal.init();
   syncStatus.init();
+  layout.init();
 
   // 6. Initial render.
   sidebar.render();

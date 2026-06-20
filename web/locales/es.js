@@ -5,6 +5,8 @@ export default {
   "app.title": "Notas",
   "nav.folders": "Carpetas",
   "nav.notes": "Notas",
+  "nav.showSidebar": "Mostrar barra lateral",
+  "nav.hideSidebar": "Ocultar barra lateral",
 
   "folders.title": "Carpetas",
   "folders.new": "Nueva carpeta",

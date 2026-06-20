@@ -7,6 +7,8 @@ export default {
   "app.title": "Notes",
   "nav.folders": "Folders",
   "nav.notes": "Notes",
+  "nav.showSidebar": "Show sidebar",
+  "nav.hideSidebar": "Hide sidebar",
 
   "folders.title": "Folders",
   "folders.new": "New folder",

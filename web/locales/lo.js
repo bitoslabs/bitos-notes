@@ -5,6 +5,8 @@ export default {
   "app.title": "ບັນທຶກ",
   "nav.folders": "ໂຟນເດີ",
   "nav.notes": "ບັນທຶກ",
+  "nav.showSidebar": "ສະແດງແຖບຂ້າງ",
+  "nav.hideSidebar": "ເຊື່ອງແຖບຂ້າງ",
 
   "folders.title": "ໂຟນເດີ",
   "folders.new": "ໂຟນເດີໃໝ່",

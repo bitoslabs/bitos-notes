@@ -5,7 +5,7 @@
  * app is fully functional offline once cached.
  */
 
-const VERSION = 'v11';
+const VERSION = 'v12';
 const CACHE = `bitos-notes-${VERSION}`;
 
 // App shell — everything needed to boot offline.
@@ -37,6 +37,7 @@ const SHELL = [
   './js/ui/dialog.js',
   './js/ui/popup.js',
   './js/ui/sync.js',
+  './js/ui/layout.js',
   './locales/en.js',
   './locales/fr.js',
   './locales/es.js',

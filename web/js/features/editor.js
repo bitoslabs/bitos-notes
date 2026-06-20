@@ -10,12 +10,14 @@
  *   <user edits>        → onInput → notes.update(...) (debounced)
  */
 
-import { notes, stripHtml } from './notes.js';
+import { notes, normalizeChecklistGroups, stripHtml } from './notes.js';
 import { draw } from './draw.js';
 import { i18n } from '../core/i18n.js';
 import { bus } from '../core/eventbus.js';
 
 const $ = (id) => document.getElementById(id);
+const CHECKLIST_MARKER_ATTR = 'data-checklist-marker';
+const CHECKLIST_BLOCK_ID_ATTR = 'data-checklist-id';
 
 let currentId = null;
 let saveTimer = null;
@@ -59,14 +61,7 @@ export const editor = {
 
     const body = $('editor-body');
     body.innerHTML = note.body || '';
-
-    // Checklist block (if any) — placed at the top of the body.
-    if (note.checklist?.length) {
-      const block = document.createElement('div');
-      block.className = 'checklist-block';
-      note.checklist.forEach((item) => block.appendChild(this._checkRow(item)));
-      body.insertBefore(block, body.firstChild);
-    }
+    this._restoreChecklist(body, note.checklist || []);
 
     this._showEmpty(false);
     this._setPinIcon(note.pinned);
@@ -122,6 +117,7 @@ export const editor = {
     } else {
       const block = document.createElement('div');
       block.className = 'checklist-block';
+      this._ensureChecklistBlockId(block);
       this._insertNodeAtSelection(block);
       block.appendChild(row);
     }
@@ -163,12 +159,65 @@ export const editor = {
     return row;
   },
 
+  _buildChecklistBlock(group) {
+    const block = document.createElement('div');
+    block.className = 'checklist-block';
+    block.setAttribute(CHECKLIST_BLOCK_ID_ATTR, group.id || this._newChecklistId());
+    (group.items || []).forEach((item) => block.appendChild(this._checkRow(item)));
+    return block;
+  },
+
+  _restoreChecklist(body, checklist) {
+    const groups = normalizeChecklistGroups(checklist);
+    const markers = [...body.querySelectorAll(`[${CHECKLIST_MARKER_ATTR}]`)];
+    if (!groups.length) {
+      markers.forEach((marker) => marker.remove());
+      return;
+    }
+
+    const unusedMarkers = [...markers];
+    groups.forEach((group, index) => {
+      const exact = markers.find((marker) => marker.getAttribute(CHECKLIST_MARKER_ATTR) === group.id);
+      const legacy = !exact && index === 0
+        ? markers.find((marker) => marker.getAttribute(CHECKLIST_MARKER_ATTR) === 'true')
+        : null;
+      const target = exact || legacy || unusedMarkers.shift();
+      const block = this._buildChecklistBlock(group);
+      if (target?.isConnected) {
+        target.replaceWith(block);
+      } else if (!markers.length && index === 0) {
+        body.insertBefore(block, body.firstChild);
+      } else {
+        body.appendChild(block);
+      }
+    });
+    body.querySelectorAll(`[${CHECKLIST_MARKER_ATTR}]`).forEach((marker) => marker.remove());
+  },
+
+  _newChecklistId() {
+    return `check-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  },
+
+  _ensureChecklistBlockId(block) {
+    if (!block.hasAttribute(CHECKLIST_BLOCK_ID_ATTR)) {
+      block.setAttribute(CHECKLIST_BLOCK_ID_ATTR, this._newChecklistId());
+    }
+    return block.getAttribute(CHECKLIST_BLOCK_ID_ATTR);
+  },
+
   /** Read the checklist block (if present) into data. */
   _readChecklist() {
-    return [...$('editor-body').querySelectorAll('.check-item')].map(row => ({
-      t: row.querySelector('.check-label')?.value || '',
-      d: row.querySelector('input')?.checked || false,
-    }));
+    return [...$('editor-body').querySelectorAll('.checklist-block')]
+      .map((block) => ({
+        id: this._ensureChecklistBlockId(block),
+        items: [...block.querySelectorAll('.check-item')]
+          .map(row => ({
+            t: row.querySelector('.check-label')?.value || '',
+            d: row.querySelector('input')?.checked || false,
+          }))
+          .filter(item => item.t || item.d),
+      }))
+      .filter(group => group.items.length);
   },
 
   _persistChecklist() {
@@ -301,6 +350,7 @@ export const editor = {
     if (!currentId) return;
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
+      this._ensureChecklistBlockIds();
       notes.update(currentId, {
         title: $('editor-title').textContent.trim(),
         body: this._readBodyHtml(),
@@ -312,8 +362,22 @@ export const editor = {
   /** Body = everything in editor-body EXCEPT the checklist block. */
   _readBodyHtml() {
     const clone = $('editor-body').cloneNode(true);
-    clone.querySelectorAll('.checklist-block').forEach(block => block.remove());
+    clone.querySelectorAll('.checklist-block').forEach((block) => {
+      const marker = document.createElement('div');
+      marker.setAttribute(
+        CHECKLIST_MARKER_ATTR,
+        block.getAttribute(CHECKLIST_BLOCK_ID_ATTR) || this._newChecklistId(),
+      );
+      block.replaceWith(marker);
+    });
     return clone.innerHTML;
+  },
+
+  _ensureChecklistBlockIds() {
+    const body = $('editor-body');
+    body.querySelectorAll('.checklist-block').forEach((block) => {
+      this._ensureChecklistBlockId(block);
+    });
   },
 
   _metaText(n) {

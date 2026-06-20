@@ -5,7 +5,7 @@
  * notes domain; opening a note is announced on the bus.
  */
 
-import { notes, stripHtml } from '../features/notes.js';
+import { hasChecklistContent, notes, stripHtml } from '../features/notes.js';
 import { sidebar } from './sidebar.js';
 import { i18n } from '../core/i18n.js';
 import { bus } from '../core/eventbus.js';
@@ -161,7 +161,7 @@ export const noteList = {
 
     const hasTitle   = !!(n.title && n.title.trim());
     const hasBody    = !!(n.body && stripHtml(n.body).trim());
-    const hasCheck   = !!(n.checklist && n.checklist.some(i => i && i.t && i.t.trim()));
+    const hasCheck   = hasChecklistContent(n.checklist);
     const isEmpty    = !hasTitle && !hasBody && !hasCheck;
 
     if (inTrash) {
@@ -204,7 +204,7 @@ export const noteList = {
 
   _onShare() {
     const n = notes.find(activeNoteId);
-    const hasChecklist = !!n?.checklist?.some(item => item?.t?.trim());
+    const hasChecklist = hasChecklistContent(n?.checklist);
     if (!n || (!n.title && !n.body && !hasChecklist)) {
       bus.emit('toast', i18n.t('toast.empty'));
       return;

@@ -5,6 +5,8 @@ export default {
   "app.title": "Notes",
   "nav.folders": "Dossiers",
   "nav.notes": "Notes",
+  "nav.showSidebar": "Afficher la barre latérale",
+  "nav.hideSidebar": "Masquer la barre latérale",
 
   "folders.title": "Dossiers",
   "folders.new": "Nouveau dossier",
