@@ -50,6 +50,7 @@ export default {
   "editor.number": "قائمة مرقمة",
   "editor.checklist": "إدراج خانة",
   "editor.draw": "رسم",
+  "editor.format": "تنسيق",
   "editor.pin": "تثبيت",
   "editor.unpin": "إلغاء التثبيت",
   "editor.delete": "حذف",
@@ -79,6 +80,9 @@ export default {
   "settings.export": "تصدير (.json)",
   "settings.import": "استيراد",
   "settings.reset": "إعادة تعيين الكل",
+  "settings.forceUpdate": "فرض التحديث",
+  "settings.forceUpdatePrompt": "مسح ملفات التطبيق المخبأة وإعادة تحميل أحدث إصدار؟",
+  "settings.forceUpdateDetail": "سيؤدي ذلك إلى حذف ذاكرة التخزين المؤقت الحالية للتطبيق، وطلب تحديث service worker، ثم إعادة تحميل الصفحة.",
   "settings.about": "bitos Notes · تخزين محلي + مزامنة Nostr · v0.1",
 
   "relays.add": "+ إضافة",

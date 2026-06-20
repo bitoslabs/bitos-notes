@@ -91,6 +91,9 @@ export default {
   "settings.export": "Export notes (.json)",
   "settings.import": "Import",
   "settings.reset": "Reset all data",
+  "settings.forceUpdate": "Force update",
+  "settings.forceUpdatePrompt": "Clear cached app files and reload the latest version?",
+  "settings.forceUpdateDetail": "This removes the current app shell cache, asks the service worker to update, and reloads the page.",
   "settings.about": "BitOS Notes · local-first + Nostr sync · v0.1",
 
   "account.invalid": "Invalid npub or nsec key",

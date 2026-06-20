@@ -5,7 +5,7 @@
  * app is fully functional offline once cached.
  */
 
-const VERSION = 'v12';
+const VERSION = 'v20';
 const CACHE = `bitos-notes-${VERSION}`;
 
 // App shell — everything needed to boot offline.
@@ -38,6 +38,8 @@ const SHELL = [
   './js/ui/popup.js',
   './js/ui/sync.js',
   './js/ui/layout.js',
+  './js/ui/bottombar.js',
+  './js/ui/viewport.js',
   './locales/en.js',
   './locales/fr.js',
   './locales/es.js',
@@ -69,6 +71,7 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
   const isNavigation = req.mode === 'navigate' || req.destination === 'document';
   const isShellDoc = url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/sw.js' || url.pathname === '/manifest.webmanifest';
+  const isCodeAsset = req.destination === 'style' || req.destination === 'script';
 
   // Always try the network first for the HTML shell and SW-related files so
   // updates can break out of an old cached boot path.
@@ -79,6 +82,18 @@ self.addEventListener('fetch', (e) => {
         caches.open(CACHE).then((c) => c.put(req, copy));
         return res;
       }).catch(() => caches.match(req).then((cached) => cached || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  // Code changes must not be hidden behind an older Android/PWA cache.
+  if (isCodeAsset) {
+    e.respondWith(
+      fetch(req).then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(req, copy));
+        return res;
+      }).catch(() => caches.match(req))
     );
     return;
   }

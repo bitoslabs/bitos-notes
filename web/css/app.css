@@ -72,7 +72,13 @@
 
 /* ---- Reset ---- */
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; overscroll-behavior: none; }
+html, body {
+  height: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
+  overscroll-behavior-y: auto;
+}
 body {
   font-family: var(--font-sans);
   background: var(--bg-app);
@@ -110,7 +116,7 @@ svg { width: 100%; height: 100%; }
 [dir="rtl"] .back-btn .ico { transform: scaleX(-1); }
 
 /* ---- Scrollbars ---- */
-.scroll { overflow-y: auto; }
+.scroll { overflow-x: hidden; overflow-y: auto; }
 .scroll-x { overflow-x: auto; overflow-y: hidden; }
 .scroll::-webkit-scrollbar, .scroll-x::-webkit-scrollbar { width: 8px; height: 8px; }
 .scroll::-webkit-scrollbar-thumb, .scroll-x::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 8px; }
@@ -121,8 +127,10 @@ svg { width: 100%; height: 100%; }
 .app {
   display: grid;
   grid-template-columns: var(--sidebar-w) var(--list-w) 1fr;
+  width: 100%;
   height: 100vh;
   height: 100dvh;
+  overflow: hidden;
   background: var(--bg-window);
   transition: grid-template-columns 0.28s var(--pane-ease);
 }
@@ -239,7 +247,7 @@ svg { width: 100%; height: 100%; }
 .back-btn .ico { width: 16px; height: 16px; stroke-width: 2.5; }
 
 /* ---- Notes list ---- */
-.notes-list { flex: 1; }
+.notes-list { flex: 1; min-width: 0; width: 100%; overflow-x: hidden; touch-action: pan-y; }
 .note-card {
   width: 100%; text-align: start;
   padding: 9px 16px;
@@ -254,7 +262,7 @@ svg { width: 100%; height: 100%; }
   width: 11px; height: 11px; flex-shrink: 0;
   fill: var(--notes-yellow); stroke: none;
 }
-.note-card .nc-title-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.note-card .nc-title-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .note-card .nc-preview { font-size: 12px; color: var(--text-secondary); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .note-card .nc-date { font-size: 11px; color: var(--text-tertiary); margin-top: 3px; }
 .notes-empty { padding: 40px 16px; text-align: center; font-size: 13px; color: var(--text-secondary); }
@@ -298,12 +306,15 @@ svg { width: 100%; height: 100%; }
 .empty-sub { font-size: 13px; margin-top: 4px; }
 .empty-sub .plus { color: var(--notes-blue); font-weight: 700; }
 
-.editor-wrap { flex: 1; }
-.editor-paper { max-width: 720px; margin: 0 auto; padding: 32px 24px 80px; }
-.editor-title-input { font-size: 28px; font-weight: 700; margin-bottom: 8px; outline: none; }
+.editor-wrap { flex: 1; min-width: 0; width: 100%; overflow-x: hidden; touch-action: pan-y; }
+.editor-paper { width: 100%; max-width: 720px; min-width: 0; margin: 0 auto; padding: 32px 24px 80px; overflow-wrap: anywhere; }
+.editor-title-input { max-width: 100%; font-size: 28px; font-weight: 700; margin-bottom: 8px; outline: none; overflow-wrap: anywhere; word-break: break-word; }
 .editor-meta { font-size: 12px; color: var(--text-secondary); margin-bottom: 20px; }
-.editor-body-input { font-size: 15px; line-height: 1.6; outline: none; min-height: 50vh; }
+.editor-body-input { max-width: 100%; font-size: 15px; line-height: 1.6; outline: none; min-height: 50vh; overflow-wrap: anywhere; word-break: break-word; }
 .editor-body-input p { margin-bottom: 0.5em; }
+.editor-body-input pre { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
+.editor-body-input img, .editor-body-input video, .editor-body-input canvas { max-width: 100%; height: auto; }
+.editor-body-input table { width: 100%; max-width: 100%; table-layout: fixed; }
 [contenteditable][data-placeholder]:empty::before { content: attr(data-placeholder); color: var(--text-tertiary); pointer-events: none; }
 [contenteditable]:focus { outline: none; }
 
@@ -318,17 +329,26 @@ svg { width: 100%; height: 100%; }
 
 /* ---- Settings modal ---- */
 .modal-backdrop {
-  position: fixed; inset: 0;
+  position: fixed;
+  left: var(--viewport-left, 0px);
+  top: var(--viewport-top, 0px);
+  width: var(--viewport-width, 100vw);
+  height: var(--viewport-height, 100vh);
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(4px);
-  display: grid; place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow: hidden;
   z-index: 100;
   animation: fade 0.18s ease;
 }
 .modal-backdrop.hidden { display: none; }
 .modal {
-  width: min(540px, calc(100vw - 32px));
-  max-height: calc(100vh - 64px);
+  width: min(540px, calc(var(--viewport-width, 100vw) - 32px));
+  max-height: calc(100vh - 32px);
+  max-height: calc(var(--viewport-height, 100dvh) - 32px);
   background: var(--bg-elevated);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-modal);
@@ -337,7 +357,7 @@ svg { width: 100%; height: 100%; }
   animation: pop 0.2s var(--pane-ease);
 }
 @keyframes fade { from { opacity: 0; } }
-@keyframes pop { from { opacity: 0; transform: scale(0.96) translateY(8px); } }
+@keyframes pop { from { opacity: 0; } }
 .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--divider); }
 .modal-head h3 { font-size: 16px; font-weight: 700; }
 .modal-body { padding: 8px 16px 20px; }
@@ -678,8 +698,10 @@ svg { width: 100%; height: 100%; }
 
   .pane-folders, .pane-list, .pane-editor {
     position: absolute; inset: 0;
+    max-width: 100%;
     transition: transform 0.28s var(--pane-ease);
   }
+  .pane-list, .pane-editor { width: 100%; }
   .pane-folders { width: 86vw; max-width: 320px; z-index: 40; }
   .pane-list, .pane-editor { z-index: 20; }
 }
@@ -706,8 +728,15 @@ svg { width: 100%; height: 100%; }
   .app[data-view="editor"] .pane-editor { transform: translateX(0); }
 
   .editor-paper { padding: 20px 18px 80px; }
-  .modal { width: calc(100vw - 16px); max-height: calc(100vh - 16px); }
+  .modal-backdrop { padding: 16px 8px; }
+  .modal, .dialog { max-width: 100%; }
+  .modal {
+    width: min(540px, 100%);
+    max-height: calc(var(--viewport-height, 100dvh) - 32px);
+  }
   .list-head, .editor-head { padding: 0 8px; }
+  /* Dialog (confirm/prompt): keep within the dynamic viewport on mobile. */
+  .dialog { max-height: calc(var(--viewport-height, 100dvh) - 32px); overflow: auto; }
 }
 
 /* ---- Mobile-only / desktop-only helpers ---- */
@@ -726,6 +755,106 @@ svg { width: 100%; height: 100%; }
 /* env safe areas (notch) */
 .list-head, .editor-head, .titlebar { padding-block: max(env(safe-area-inset-top), 0px); }
 .account-bar { padding-bottom: max(env(safe-area-inset-bottom), 10px); }
+
+/* Screen-reader-only helper (labels for icon-only buttons). */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+/* ============================================================
+   Mobile bottom app bar + mobile editor formatting toggle
+   Mobile = ≤860px (matches the router breakpoint). Desktop is
+   untouched: the bar is .mobile-only and the toolbar stays on.
+   ============================================================ */
+.bottom-bar {
+  --bar-height: calc(56px + env(safe-area-inset-bottom));
+  position: fixed;
+  left: var(--viewport-left, 0px);
+  top: calc(var(--viewport-top, 0px) + var(--viewport-height, 100vh) - var(--bar-height));
+  width: var(--viewport-width, 100vw);
+  z-index: 60;
+  /* Display is driven by .mobile-only (hidden on desktop, shown ≤860px).
+     Only set the flex layout here so it lays out once visible. */
+  align-items: stretch;
+  justify-content: space-around;
+  height: var(--bar-height);
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--divider);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+  transform: translateZ(0);
+  /* Slide out of view when the on-screen keyboard is up (toggle: .kb-open). */
+  transition: transform 0.2s var(--pane-ease), opacity 0.2s var(--pane-ease);
+}
+/* When shown on mobile, lay out as a flex row. */
+@media (max-width: 860px) {
+  .bottom-bar { display: flex; }
+}
+.bottom-bar.kb-open { transform: translateY(150%); opacity: 0; pointer-events: none; }
+
+.bb-btn {
+  flex: 1;
+  min-width: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px;
+  background: transparent; border: 0; cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 10px; font-weight: 500;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.bb-btn > span:not(.sr-only) { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bb-btn .ico { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.bb-btn:active { color: var(--text-primary); }
+.bb-btn.active { color: var(--notes-blue); }
+
+/* The New-note FAB: a raised accent disc, slightly taller than its row. */
+.bb-fab {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 50px; height: 50px;
+  border-radius: 50%;
+  margin-top: -22px;                 /* lift it above the bar */
+  background: var(--notes-blue);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+}
+.bb-fab .ico { width: 26px; height: 26px; stroke-width: 2.4; }
+.bb-fab:active { color: #fff; transform: scale(0.95); }
+
+/* Leave room above the bottom bar so list/editor content isn't covered. */
+@media (max-width: 860px) {
+  .pane-list .notes-list,
+  .pane-list .note-count,
+  .pane-folders .folder-list { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+  .editor-paper { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+}
+
+/* Mobile editor toolbar: hidden by default, revealed via the Aa button
+   (#toolbar.mobile-open). On desktop the toolbar is always visible (its base
+   style is unchanged). */
+@media (max-width: 860px) {
+  #toolbar { display: none; }
+  #toolbar.mobile-open {
+    display: flex;
+    position: fixed;
+    left: var(--viewport-left, 0px);
+    top: calc(var(--viewport-top, 0px) + var(--viewport-height, 100vh) - 56px - env(safe-area-inset-bottom));
+    width: var(--viewport-width, 100vw);
+    transform: translateY(-100%);
+    z-index: 59;
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--divider);
+    padding: 8px 10px;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  }
+  /* When the format bar is open above the bottom bar, push the bottom bar down
+     out of the way so both never overlap. */
+  #toolbar.mobile-open ~ * #bottom-bar,
+  body:has(#toolbar.mobile-open) #bottom-bar { z-index: 58; }
+  .keyboard-open #toolbar.mobile-open {
+    top: calc(var(--viewport-top, 0px) + var(--viewport-height, 100vh));
+  }
+  #format-toggle.active { color: var(--notes-blue); background: var(--notes-blue-soft); }
+}
 
 /* ---- Sync status chip (sidebar) ---- */
 .sync-chip { position: relative; color: var(--text-tertiary); }
