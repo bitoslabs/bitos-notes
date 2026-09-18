@@ -18,7 +18,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Notes" />
 
-  <link rel="stylesheet" href="./css/app.css?v=31" />
+  <link rel="stylesheet" href="./css/app.css?v=32" />
 </head>
 <body data-theme="light">
   <!-- ============ APP SHELL ============ -->
@@ -26,11 +26,11 @@
 
     <!-- ===== PANE 1 · FOLDERS SIDEBAR ===== -->
     <aside id="pane-folders" class="pane pane-folders" aria-label="Folders">
-      <div class="titlebar">
+      <!-- <div class="titlebar">
         <span class="traffic" style="--c:#FF5F57"></span>
         <span class="traffic" style="--c:#FEBC2E"></span>
         <span class="traffic" style="--c:#28C840"></span>
-      </div>
+      </div> -->
 
       <div class="sidebar-head">
         <h1 class="sidebar-title" data-i18n="folders.title">Folders</h1>
@@ -90,6 +90,16 @@
           </button>
         </div>
       </header>
+
+      <!-- Mobile inline search: lives in the list pane so results stay visible
+           while typing. Hidden on desktop (see .list-search in app.css). -->
+      <div class="list-search" id="list-search">
+        <svg class="search-ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
+        <input id="list-search-input" type="search" data-i18n-placeholder="folders.search" placeholder="Search" autocomplete="off" enterkeyhint="search" />
+        <button class="list-search-clear" id="list-search-clear" type="button" aria-label="Clear search">
+          <svg viewBox="0 0 24 24" class="ico"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
 
       <div id="notes-list" class="notes-list scroll"></div>
 
@@ -526,6 +536,6 @@
     </div>
   </div>
 
-  <script type="module" src="./js/app.js?v=25"></script>
+  <script type="module" src="./js/app.js?v=26"></script>
 </body>
 </html>

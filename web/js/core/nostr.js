@@ -21,7 +21,8 @@
  * ===================================================================== */
 
 const BECH32_CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
-const BECH32_POLY_MOD_CONST = 0x3b6a57b2; // generator constant
+// BIP-173 generator constants (standard, interops with all Nostr clients)
+const BECH32_GEN = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
 
 function bech32Polymod(values) {
   let chk = 1;
@@ -29,7 +30,7 @@ function bech32Polymod(values) {
     const top = chk >> 25;
     chk = ((chk & 0x1ffffff) << 5) ^ v;
     for (let i = 0; i < 5; i++) {
-      if ((top >> i) & 1) chk ^= [0x0, BECH32_POLY_MOD_CONST, 0x26d086d2, 0x1ea119bb, 0x3d4233dd, 0x2a1462b3][i + 1];
+      if ((top >> i) & 1) chk ^= BECH32_GEN[i];
     }
   }
   return chk;
@@ -101,9 +102,31 @@ export function bech32Decode(str) {
     if (BECH32_CHARSET.indexOf(c) === -1) throw new Error('bech32: invalid char');
   }
   const data = [...dataPart].map(c => BECH32_CHARSET.indexOf(c));
-  if (!bech32VerifyChecksum(hrp, data, SPEC)) throw new Error('bech32: bad checksum');
+  if (!bech32VerifyChecksum(hrp, data, SPEC)) {
+    // Legacy fallback: accounts created before the generator-constant fix
+    // used corrupt constants for both encode+decode (self-consistent but
+    // non-standard). Accept those strings once so old keys still import.
+    if (!bech32VerifyChecksumLegacy(hrp, data)) throw new Error('bech32: bad checksum');
+  }
   const payload = convertBits(data.slice(0, -6), 5, 8, false);
   return { hrp, bytes: Uint8Array.from(payload) };
+}
+
+// Pre-fix corrupt generator constants — kept ONLY for decoding legacy keys.
+const BECH32_GEN_LEGACY = [0x3b6a57b2, 0x26d086d2, 0x1ea119bb, 0x3d4233dd, 0x2a1462b3];
+function bech32PolymodLegacy(values) {
+  let chk = 1;
+  for (const v of values) {
+    const top = chk >> 25;
+    chk = ((chk & 0x1ffffff) << 5) ^ v;
+    for (let i = 0; i < 5; i++) {
+      if ((top >> i) & 1) chk ^= BECH32_GEN_LEGACY[i];
+    }
+  }
+  return chk;
+}
+function bech32VerifyChecksumLegacy(hrp, data) {
+  return bech32PolymodLegacy([...bech32HrpExpand(hrp), ...data]) === 1;
 }
 
 /* =====================================================================

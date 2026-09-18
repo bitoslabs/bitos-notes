@@ -33,6 +33,10 @@ export const noteList = {
     $('share-btn').addEventListener('click', () => this._onShare());
     $('sort-btn').addEventListener('click', (e) => this._showSortMenu(e.currentTarget));
 
+    // Search: the folders-pane field (desktop) and the inline list field (mobile)
+    // both drive the same state. Wire them up + keep them mirrored.
+    this._initSearch();
+
     $('notes-list').addEventListener('click', (e) => {
       // Empty-state quick-create: clicking the hint creates a note.
       if (e.target.closest('.notes-empty-create')) return this._onNew();
@@ -40,7 +44,7 @@ export const noteList = {
       if (card) this.select(+card.dataset.note || card.dataset.note);
     });
 
-    bus.on('search:changed',  (q) => { search = q; this.render(); });
+    bus.on('search:changed',  (q) => { search = q; this._syncSearchInputs(q); this.render(); });
     bus.on('notes:changed',   () => this.render());
     bus.on('folder:selected', () => { activeNoteId = null; this.render(); });
     bus.on('locale:changed',  () => this.render());
@@ -144,6 +148,31 @@ export const noteList = {
   _renderCount(n) {
     const key = n === 1 ? 'notes.note_one' : 'notes.note_other';
     $('note-count').textContent = `${n} ${i18n.t(key)}`;
+  },
+
+  /** Wire the mobile inline search field + clear button. */
+  _initSearch() {
+    const input = $('list-search-input');
+    const clear = $('list-search-clear');
+    if (input) {
+      input.addEventListener('input', (e) => bus.emit('search:changed', e.target.value));
+    }
+    if (clear) {
+      clear.addEventListener('click', () => {
+        bus.emit('search:changed', '');
+        $('list-search-input')?.focus();
+      });
+    }
+  },
+
+  /** Mirror the query across both search fields + toggle the clear button. */
+  _syncSearchInputs(q) {
+    const listInput = $('list-search-input');
+    const listWrap  = $('list-search');
+    if (listInput && listInput.value !== q) listInput.value = q;
+    listWrap?.classList.toggle('has-text', !!q);
+    const foldersInput = document.getElementById('search-input');
+    if (foldersInput && foldersInput.value !== q) foldersInput.value = q;
   },
 
   _onNew() {

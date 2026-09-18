@@ -59,9 +59,10 @@ export const bottomBar = {
         router.go('list');
         break;
       case 'search':
-        // Search lives in the folders pane; reveal it and focus the field.
-        router.go('folders');
-        setTimeout(() => $('search-input')?.focus(), 60);
+        // On mobile the search field lives in the notes-list pane so results
+        // are visible while typing. Surface it there and focus the field.
+        router.go('list');
+        setTimeout(() => $('list-search-input')?.focus(), 80);
         break;
       case 'new':
         bus.emit('quick:create');

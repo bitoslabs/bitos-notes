@@ -21,6 +21,7 @@ import { syncStatus } from './ui/sync.js';
 import { layout } from './ui/layout.js';
 import { bottomBar } from './ui/bottombar.js';
 import { viewport } from './ui/viewport.js';
+import { swipe } from './ui/swipe.js';
 import { bus } from './core/eventbus.js';
 
 async function boot() {
@@ -49,6 +50,7 @@ async function boot() {
   syncStatus.init();
   layout.init();
   bottomBar.init();
+  swipe.init();
 
   // 6. Initial render.
   sidebar.render();

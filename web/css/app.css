@@ -675,46 +675,39 @@ svg { width: 100%; height: 100%; }
   content: ""; position: absolute; left: 4px; top: 1px; width: 5px; height: 9px;
   border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg);
 }
-/* ---- Responsive: TABLET (≤1024px) → hide folders pane, use list as root ---- */
+/* ---- Responsive: TABLET (≤1024px) → trim desktop pane widths a touch ---- */
 @media (max-width: 1024px) {
   :root { --sidebar-w: 240px; --list-w: 300px; }
 }
-@media (max-width: 860px) {
-  .app { grid-template-columns: var(--list-w) 1fr; }
-  .pane-folders {
-    position: fixed; top: 0; bottom: 0; left: 0; z-index: 30;
-    width: 280px;
-    transform: translateX(-100%);
-    box-shadow: 4px 0 24px rgba(0,0,0,0.15);
-  }
-  .app.show-folders .pane-folders { transform: translateX(0); }
-  .back-btn { display: inline-flex; }
-}
 
-/* ---- Responsive: MOBILE (≤640px) → single pane, slide stack ---- */
-/* Mobile stack navigation is driven by <body data-view="folders|list|editor"> */
+/* ============================================================
+   MOBILE / TABLET (≤860px) — unified single-pane stack
+   One consistent behaviour from phone up to small tablet:
+     Folders  →  Notes list  →  Editor
+   driven by #app[data-view="folders|list|editor"].
+   (Previously a separate two-pane "tablet" mode existed, but its folders
+   overlay was never reachable — `show-folders` was dead CSS — so the stack
+   is now the single source of truth for everything below the desktop cut.)
+   ============================================================ */
 @media (max-width: 860px) {
   .app { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+  .back-btn { display: inline-flex; }
 
   .pane-folders, .pane-list, .pane-editor {
     position: absolute; inset: 0;
     max-width: 100%;
     transition: transform 0.28s var(--pane-ease);
+    will-change: transform;
   }
-  .pane-list, .pane-editor { width: 100%; }
-  .pane-folders { width: 86vw; max-width: 320px; z-index: 40; }
-  .pane-list, .pane-editor { z-index: 20; }
-}
+  .pane-list, .pane-editor { width: 100%; z-index: 20; }
+  /* Folders is a partial-width drawer on tablets, full-width on phones. */
+  .pane-folders {
+    width: min(86vw, 360px);
+    z-index: 40;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.12);
+  }
 
-/* Two-pane tablet: folders is an overlay, list+editor share the screen */
-@media (min-width: 641px) and (max-width: 860px) {
-  .app { grid-template-columns: 1fr 1fr; }
-  .pane-list, .pane-editor { position: relative; inset: auto; transform: none; }
-  .pane-folders { position: fixed; top: 0; bottom: 0; left: 0; }
-}
-
-/* Mobile single-pane stack — driven by [data-view] */
-@media (max-width: 640px) {
+  /* iOS-style depth: the level behind the active one peeks in and dims. */
   .app[data-view="folders"] .pane-folders { transform: translateX(0); }
   .app[data-view="folders"] .pane-list,
   .app[data-view="folders"] .pane-editor { transform: translateX(100%); }
@@ -724,19 +717,12 @@ svg { width: 100%; height: 100%; }
   .app[data-view="list"] .pane-editor { transform: translateX(100%); }
 
   .app[data-view="editor"] .pane-folders { transform: translateX(-100%); }
-  .app[data-view="editor"] .pane-list { transform: translateX(-33%); }
+  .app[data-view="editor"] .pane-list { transform: translateX(-28%); filter: brightness(0.96); }
   .app[data-view="editor"] .pane-editor { transform: translateX(0); }
 
+  /* Comfortable mobile reading widths (refined further at ≤420px below). */
   .editor-paper { padding: 20px 18px 80px; }
-  .modal-backdrop { padding: 16px 8px; }
-  .modal, .dialog { max-width: 100%; }
-  .modal {
-    width: min(540px, 100%);
-    max-height: calc(var(--viewport-height, 100dvh) - 32px);
-  }
-  .list-head, .editor-head { padding: 0 8px; }
-  /* Dialog (confirm/prompt): keep within the dynamic viewport on mobile. */
-  .dialog { max-height: calc(var(--viewport-height, 100dvh) - 32px); overflow: auto; }
+  .list-head, .editor-head { padding-inline: 8px; }
 }
 
 /* ---- Mobile-only / desktop-only helpers ---- */
@@ -745,16 +731,25 @@ svg { width: 100%; height: 100%; }
 @media (max-width: 860px) {
   .mobile-only { display: inline-flex; }
   .desktop-only { display: none; }
-  /* On mobile the folders pane is an overlay (router-driven); the hide-folders
-     toggle is irrelevant, so neutralise the collapsed state here. */
+  /* On mobile the folders pane is a router-driven overlay; the desktop
+     hide-folders toggle is irrelevant, so neutralise it here. */
   .app.hide-folders { grid-template-columns: 1fr; }
   .app.hide-folders .pane-folders { width: auto; opacity: 1; pointer-events: auto; }
+  /* macOS-style traffic-light titlebar is desktop-only chrome. */
+  .titlebar { display: none; }
 }
-@media (max-width: 640px) { .titlebar { display: none; } }
 
-/* env safe areas (notch) */
+/* env safe areas (notch / home indicator). The pane heads need top inset on
+   mobile (each pane is full-screen), and the folders sidebar head must clear
+   the status bar too — previously only list/editor heads were protected. */
 .list-head, .editor-head, .titlebar { padding-block: max(env(safe-area-inset-top), 0px); }
 .account-bar { padding-bottom: max(env(safe-area-inset-bottom), 10px); }
+@media (max-width: 860px) {
+  .sidebar-head { padding-top: max(env(safe-area-inset-top), 8px); }
+  /* When the folders pane is the active root screen, give its content a
+     touch more breathing room below the status bar. */
+  .search-wrap { margin-top: 2px; }
+}
 
 /* Screen-reader-only helper (labels for icon-only buttons). */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
@@ -798,27 +793,32 @@ svg { width: 100%; height: 100%; }
   background: transparent; border: 0; cursor: pointer;
   color: var(--text-secondary);
   font-size: 10px; font-weight: 500;
+  border-radius: var(--radius-sm);
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s, background 0.12s, transform 0.1s;
 }
 .bb-btn > span:not(.sr-only) { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bb-btn .ico { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.bb-btn:active { color: var(--text-primary); }
+.bb-btn .ico { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.15s var(--pane-ease); }
+.bb-btn:active { color: var(--text-primary); background: var(--hover); transform: scale(0.92); }
 .bb-btn.active { color: var(--notes-blue); }
+.bb-btn.active .ico { transform: scale(1.08); }
 
 /* The New-note FAB: a raised accent disc, slightly taller than its row. */
 .bb-fab {
   flex: 0 0 auto;
   align-self: center;
-  width: 50px; height: 50px;
+  width: 52px; height: 52px;
   border-radius: 50%;
   margin-top: -22px;                 /* lift it above the bar */
   background: var(--notes-blue);
   color: #fff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.35);
+  transition: transform 0.12s var(--pane-ease), box-shadow 0.12s, filter 0.12s;
 }
-.bb-fab .ico { width: 26px; height: 26px; stroke-width: 2.4; }
-.bb-fab:active { color: #fff; transform: scale(0.95); }
+.bb-fab .ico { width: 26px; height: 26px; stroke-width: 2.4; transition: none; }
+.bb-fab:active { color: #fff; transform: scale(0.9); box-shadow: 0 2px 6px rgba(0, 122, 255, 0.35); }
+.bb-fab:hover { filter: brightness(1.06); }
 
 /* Leave room above the bottom bar so list/editor content isn't covered. */
 @media (max-width: 860px) {
@@ -854,6 +854,156 @@ svg { width: 100%; height: 100%; }
     top: calc(var(--viewport-top, 0px) + var(--viewport-height, 100vh));
   }
   #format-toggle.active { color: var(--notes-blue); background: var(--notes-blue-soft); }
+}
+
+/* ============================================================
+   MOBILE UX POLISH (≤860px)
+   - Modals / dialogs / popups become native bottom sheets
+   - The bottom bar tucks away while any overlay is open
+   - Inline search bar in the notes list (results visible while typing)
+   - Roomier tap targets for cards / folder rows / toolbar
+   - A more readable, thumb-friendly editor header
+   Desktop is untouched: every rule below is scoped to ≤860px.
+   ============================================================ */
+
+/* ---- Bottom sheets: anchor modals/dialogs to the bottom on mobile ---- */
+@media (max-width: 860px) {
+  .modal-backdrop { align-items: flex-end; justify-content: center; padding: 0; }
+  .modal,
+  .dialog {
+    width: 100%;
+    max-width: 100%;
+    max-height: 92dvh;
+    max-height: calc(var(--viewport-height, 100dvh) * 0.92);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    animation: sheet-up 0.28s var(--pane-ease);
+    /* Let long settings scroll inside the sheet, not the page. */
+    overflow: hidden;
+    padding-bottom: max(env(safe-area-inset-bottom), 0px);
+  }
+  /* Grab handle painted at the top of every sheet (no extra DOM needed). */
+  .modal::before,
+  .dialog::before {
+    content: "";
+    display: block;
+    width: 36px; height: 5px;
+    margin: 7px auto 2px;
+    border-radius: 3px;
+    background: var(--divider);
+    flex: 0 0 auto;
+  }
+  .dialog { padding-top: 6px; }
+  /* Sheets are full-height stacks: head stays fixed, body scrolls. */
+  .modal { display: flex; flex-direction: column; }
+  .modal .modal-body { flex: 1; min-height: 0; }
+  @keyframes sheet-up { from { transform: translateY(100%); } }
+  /* The shared popup menu (sort / folder actions) becomes an action sheet too. */
+  #popup-menu.popup-menu {
+    position: fixed !important;
+    left: 8px !important; right: 8px !important; top: auto !important;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    width: auto; min-width: 0;
+    border-radius: var(--radius-lg);
+    transform-origin: bottom center;
+    animation: pop 0.18s var(--pane-ease);
+  }
+  #popup-menu .popup-item { padding: 13px 14px; font-size: 15px; }   /* bigger tap targets */
+  #popup-menu .popup-head { padding: 9px 14px 6px; }
+}
+
+/* ---- Tuck the bottom bar behind any open overlay ---- */
+/* Pure-CSS via :has() (the app already depends on it for the format toolbar):
+   whenever any modal / dialog / popup is visible, slide the bottom bar away so
+   it never floats over a bottom sheet. No JS coordination needed. */
+body:has(#settings-modal:not(.hidden)) .bottom-bar,
+body:has(#account-modal:not(.hidden)) .bottom-bar,
+body:has(#dialog-backdrop:not(.hidden)) .bottom-bar,
+body:has(#popup-menu:not(.hidden)) .bottom-bar {
+  transform: translateY(150%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---- Inline search bar inside the notes list (mobile only) ---- */
+/* Lives in the list pane so results are visible while typing — the folders-pane
+   search is hidden on mobile to avoid two competing fields. */
+.list-search {
+  display: none;
+  position: relative;
+  padding: 6px 12px 8px;
+  border-bottom: 1px solid var(--divider);
+}
+.list-search .search-ico {
+  position: absolute; left: 22px; top: 55%; transform: translateY(-50%);
+  width: 14px; height: 14px; pointer-events: none;
+  fill: none; stroke: var(--text-secondary); stroke-width: 2.5; stroke-linecap: round;
+}
+[dir="rtl"] .list-search .search-ico { left: auto; right: 22px; }
+.list-search input {
+  width: 100%;
+  background: var(--hover);
+  border: none; border-radius: var(--radius-sm);
+  padding: 9px 34px 9px 32px;
+  font-size: 15px;                       /* ≥16px-ish + the visual size avoids iOS zoom-on-focus */
+}
+[dir="rtl"] .list-search input { padding: 9px 32px 9px 34px; }
+.list-search input:focus { outline: 2px solid rgba(0,122,255,0.4); }
+.list-search .list-search-clear {
+  position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
+  width: 22px; height: 22px; border-radius: 50%;
+  display: none; place-items: center;
+  background: var(--active); color: var(--text-secondary);
+}
+[dir="rtl"] .list-search .list-search-clear { right: auto; left: 18px; }
+.list-search .list-search-clear .ico { width: 12px; height: 12px; stroke-width: 2.5; }
+.list-search.has-text .list-search-clear { display: grid; }
+@media (max-width: 860px) {
+  .list-search { display: block; }
+  /* The folders pane keeps its search on desktop only; on mobile the list is
+     where search happens, so retire the duplicate field. */
+  .pane-folders .search-wrap { display: none; }
+}
+
+/* ---- Roomier tap targets on touch ---- */
+@media (max-width: 860px) {
+  .note-card { padding: 12px 16px; }
+  .note-card .nc-title { font-size: 15px; }
+  .note-card .nc-preview { font-size: 13px; margin-top: 3px; }
+  .note-card .nc-date { font-size: 11px; margin-top: 4px; }
+  .folder-row { padding: 11px 10px; font-size: 15px; }
+  .folder-row .emoji { font-size: 18px; }
+  .folder-row .count { font-size: 12px; }
+  /* Icon buttons in the pane heads: never below the 44px touch minimum. */
+  .list-head .icon-btn, .editor-head .icon-btn,
+  .sidebar-actions .icon-btn { width: 36px; height: 36px; }
+  .list-head .ico, .editor-head .ico, .sidebar-actions .ico { width: 20px; height: 20px; }
+}
+
+/* ---- Thumb-friendly editor header ---- */
+@media (max-width: 860px) {
+  /* Promote the back button: bigger hit area + clearer affordance. */
+  .editor-head .back-btn,
+  .list-head .back-btn {
+    font-size: 16px; font-weight: 600;
+    padding: 6px 8px 6px 4px; margin-left: -4px;
+    min-height: 36px;
+  }
+  .editor-head .back-btn .ico,
+  .list-head .back-btn .ico { width: 22px; height: 22px; }
+  /* The on-screen date meta is less useful in the cramped mobile header; the
+     body already shows it, so shrink it to give actions room. */
+  .editor-meta-left { min-width: 0; }
+  .editor-date { font-size: 11px; }
+  /* A touch more vertical air around the toolbar tools. */
+  .tool { min-width: 38px; height: 36px; }
+}
+
+/* ---- Large-title comfort on small phones ---- */
+@media (max-width: 420px) {
+  .editor-paper { padding: 18px 16px 96px; }
+  .editor-title-input { font-size: 24px; }
+  .editor-body-input { font-size: 16px; }    /* 16px keeps iOS from auto-zooming */
+  .list-title { font-size: 16px; }
 }
 
 /* ---- Sync status chip (sidebar) ---- */
