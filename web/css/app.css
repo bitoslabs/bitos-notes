@@ -988,32 +988,33 @@ body:has(#popup-menu:not(.hidden)) .bottom-bar {
    search is hidden on mobile to avoid two competing fields. */
 .list-search {
   display: none;
+  flex: 0 0 auto;                          /* never let the pane squeeze the bar away */
   position: relative;
-  padding: 6px 12px 8px;
+  padding: 8px 12px;                        /* symmetric → the icon centres on the input */
   border-bottom: 1px solid var(--divider);
 }
 .list-search .search-ico {
-  position: absolute; left: 22px; top: 55%; transform: translateY(-50%);
-  width: 14px; height: 14px; pointer-events: none;
+  position: absolute; left: 24px; top: 50%; transform: translateY(-50%);
+  width: 15px; height: 15px; pointer-events: none;
   fill: none; stroke: var(--text-secondary); stroke-width: 2.5; stroke-linecap: round;
 }
-[dir="rtl"] .list-search .search-ico { left: auto; right: 22px; }
+[dir="rtl"] .list-search .search-ico { left: auto; right: 24px; }
 .list-search input {
   width: 100%;
   background: var(--hover);
   border: none; border-radius: var(--radius-sm);
-  padding: 9px 34px 9px 32px;
-  font-size: 15px;                       /* ≥16px-ish + the visual size avoids iOS zoom-on-focus */
+  padding: 10px 36px;                     /* balanced insets for icon + clear button */
+  font-size: 16px;                       /* 16px stops iOS Safari zoom-on-focus (layout jump) */
 }
-[dir="rtl"] .list-search input { padding: 9px 32px 9px 34px; }
+[dir="rtl"] .list-search input { padding: 10px 36px; }
 .list-search input:focus { outline: 2px solid rgba(0,122,255,0.4); }
 .list-search .list-search-clear {
-  position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
+  position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
   width: 22px; height: 22px; border-radius: 50%;
   display: none; place-items: center;
   background: var(--active); color: var(--text-secondary);
 }
-[dir="rtl"] .list-search .list-search-clear { right: auto; left: 18px; }
+[dir="rtl"] .list-search .list-search-clear { right: auto; left: 20px; }
 .list-search .list-search-clear .ico { width: 12px; height: 12px; stroke-width: 2.5; }
 .list-search.has-text .list-search-clear { display: grid; }
 @media (max-width: 860px) {
@@ -1021,6 +1022,8 @@ body:has(#popup-menu:not(.hidden)) .bottom-bar {
   /* The folders pane keeps its search on desktop only; on mobile the list is
      where search happens, so retire the duplicate field. */
   .pane-folders .search-wrap { display: none; }
+  /* Every form field gets 16px on mobile so iOS never zooms the layout on focus. */
+  .text-input, textarea.text-input, .lang-select { font-size: 16px; }
 }
 
 /* ---- Roomier tap targets on touch ---- */
