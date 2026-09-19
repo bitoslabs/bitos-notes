@@ -39,6 +39,8 @@ export const bottomBar = {
     bus.on('view:changed', ({ view }) => {
       this._syncActive(view);
       if (view !== 'editor') this._setFormat(false);
+      // Close the soft keyboard when leaving the list (search lives there).
+      if (view !== 'list') $('list-search-input')?.blur();
     });
     this._syncActive(router.view);
 
@@ -59,9 +61,13 @@ export const bottomBar = {
         router.go('list');
         break;
       case 'search':
-        // Search lives in the folders pane; reveal it and focus the field.
-        router.go('folders');
-        setTimeout(() => $('search-input')?.focus(), 60);
+        // On mobile the search field lives in the notes-list pane so results
+        // are visible while typing. Surface it there and focus the field.
+        // Focus must happen synchronously (still inside the tap gesture) or
+        // iOS refuses to raise the keyboard; preventScroll stops the browser
+        // from scrolling the sliding pane and disturbing the layout.
+        router.go('list');
+        this._focusSearch();
         break;
       case 'new':
         bus.emit('quick:create');
@@ -70,6 +76,15 @@ export const bottomBar = {
         settings.open();
         break;
     }
+  },
+
+  /** Focus the mobile inline search without scrolling the sliding pane. */
+  _focusSearch() {
+    const input = $('list-search-input');
+    if (!input) return;
+    try { input.focus({ preventScroll: true }); }
+    catch { input.focus(); }                 // older Safari: no options object
+    $('notes-list')?.scrollTo?.({ top: 0 }); // results start at the top
   },
 
   /** Show / hide the editor formatting toolbar on mobile. */

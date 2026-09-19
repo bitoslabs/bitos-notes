@@ -21,7 +21,8 @@
  * ===================================================================== */
 
 const BECH32_CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
-const BECH32_POLY_MOD_CONST = 0x3b6a57b2; // generator constant
+// BIP-173 generator constants (standard, interops with all Nostr clients)
+const BECH32_GEN = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
 
 function bech32Polymod(values) {
   let chk = 1;
@@ -29,7 +30,7 @@ function bech32Polymod(values) {
     const top = chk >> 25;
     chk = ((chk & 0x1ffffff) << 5) ^ v;
     for (let i = 0; i < 5; i++) {
-      if ((top >> i) & 1) chk ^= [0x0, BECH32_POLY_MOD_CONST, 0x26d086d2, 0x1ea119bb, 0x3d4233dd, 0x2a1462b3][i + 1];
+      if ((top >> i) & 1) chk ^= BECH32_GEN[i];
     }
   }
   return chk;
@@ -89,7 +90,9 @@ export function bech32Encode(hrp, bytes) {
 export function bech32Decode(str) {
   if (typeof str !== 'string') throw new Error('bech32: not a string');
   str = str.toLowerCase();
-  if (str.length > 90) throw new Error('bech32: too long');
+  // BIP-173 caps at 90 chars, but NIP-19 identifiers (naddr/nevent/nprofile)
+  // legitimately exceed it, so allow a generous ceiling instead.
+  if (str.length > 500) throw new Error('bech32: too long');
   const pos = str.lastIndexOf('1');
   if (pos < 1 || pos + 7 > str.length) throw new Error('bech32: invalid separator');
   const hrp = str.slice(0, pos);
@@ -101,9 +104,31 @@ export function bech32Decode(str) {
     if (BECH32_CHARSET.indexOf(c) === -1) throw new Error('bech32: invalid char');
   }
   const data = [...dataPart].map(c => BECH32_CHARSET.indexOf(c));
-  if (!bech32VerifyChecksum(hrp, data, SPEC)) throw new Error('bech32: bad checksum');
+  if (!bech32VerifyChecksum(hrp, data, SPEC)) {
+    // Legacy fallback: accounts created before the generator-constant fix
+    // used corrupt constants for both encode+decode (self-consistent but
+    // non-standard). Accept those strings once so old keys still import.
+    if (!bech32VerifyChecksumLegacy(hrp, data)) throw new Error('bech32: bad checksum');
+  }
   const payload = convertBits(data.slice(0, -6), 5, 8, false);
   return { hrp, bytes: Uint8Array.from(payload) };
+}
+
+// Pre-fix corrupt generator constants — kept ONLY for decoding legacy keys.
+const BECH32_GEN_LEGACY = [0x3b6a57b2, 0x26d086d2, 0x1ea119bb, 0x3d4233dd, 0x2a1462b3];
+function bech32PolymodLegacy(values) {
+  let chk = 1;
+  for (const v of values) {
+    const top = chk >> 25;
+    chk = ((chk & 0x1ffffff) << 5) ^ v;
+    for (let i = 0; i < 5; i++) {
+      if ((top >> i) & 1) chk ^= BECH32_GEN_LEGACY[i];
+    }
+  }
+  return chk;
+}
+function bech32VerifyChecksumLegacy(hrp, data) {
+  return bech32PolymodLegacy([...bech32HrpExpand(hrp), ...data]) === 1;
 }
 
 /* =====================================================================
@@ -287,6 +312,37 @@ export function npubToPk(npub) {
   const { hrp, bytes } = bech32Decode(npub);
   if (hrp !== 'npub' || bytes.length !== 32) throw new Error('invalid npub');
   return bytes;
+}
+
+/* =====================================================================
+ * NIP-19 shareable identifiers.
+ * `naddr` encodes an addressable (parameterized-replaceable) event:
+ *   TLV type 0 = d-tag identifier (UTF-8)
+ *   TLV type 1 = relay hint (UTF-8, optional, repeatable)
+ *   TLV type 2 = author pubkey (32 raw bytes)
+ *   TLV type 3 = kind (4-byte big-endian)
+ * This is the canonical link for NIP-23 long-form notes (kind 30023).
+ * ===================================================================== */
+
+/** Encode an naddr for NIP-23 public notes. `pubkey` is 32-byte or hex. */
+export function naddrEncode({ identifier = '', pubkey, kind, relays = [] }) {
+  const pk = typeof pubkey === 'string' ? fromHex(pubkey) : pubkey;
+  if (!(pk instanceof Uint8Array) || pk.length !== 32) throw new Error('naddr: pubkey must be 32 bytes');
+  if (!Number.isInteger(kind) || kind < 0) throw new Error('naddr: invalid kind');
+
+  const enc = new TextEncoder();
+  const bytes = [];
+  const push = (type, value) => {
+    if (value.length > 255) throw new Error('naddr: TLV value too long');
+    bytes.push(type, value.length, ...value);
+  };
+
+  push(0, enc.encode(identifier || ''));
+  for (const relay of relays) push(1, enc.encode(relay));
+  push(2, pk);
+  push(3, [(kind >>> 24) & 0xff, (kind >>> 16) & 0xff, (kind >>> 8) & 0xff, kind & 0xff]);
+
+  return bech32Encode('naddr', Uint8Array.from(bytes));
 }
 
 /** Derive pubkey (32 bytes) from a private key (raw bytes). */

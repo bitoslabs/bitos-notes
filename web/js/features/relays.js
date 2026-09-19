@@ -14,6 +14,7 @@ import { store } from '../core/store.js';
 import { bus } from '../core/eventbus.js';
 
 const DEFAULTS = [
+  { url: 'wss://nostr-01.yakihonne.com',read: true, write: true,  status: 'unknown', latency: null },
   { url: 'wss://relay.damus.io',  read: true, write: true,  status: 'unknown', latency: null },
   { url: 'wss://nos.lol',         read: true, write: true,  status: 'unknown', latency: null },
   { url: 'wss://relay.nostr.band',read: true, write: false, status: 'unknown', latency: null },

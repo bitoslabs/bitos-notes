@@ -37,3 +37,5 @@ deploy-web.sh
 web.conf
 
 test/
+notes.bitos.space
+ui.html

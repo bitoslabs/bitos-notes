@@ -6,6 +6,7 @@
  */
 
 import { hasChecklistContent, notes, stripHtml } from '../features/notes.js';
+import { publish } from '../features/publish.js';
 import { sidebar } from './sidebar.js';
 import { i18n } from '../core/i18n.js';
 import { bus } from '../core/eventbus.js';
@@ -33,14 +34,25 @@ export const noteList = {
     $('share-btn').addEventListener('click', () => this._onShare());
     $('sort-btn').addEventListener('click', (e) => this._showSortMenu(e.currentTarget));
 
+    // Search: the folders-pane field (desktop) and the inline list field (mobile)
+    // both drive the same state. Wire them up + keep them mirrored.
+    this._initSearch();
+
     $('notes-list').addEventListener('click', (e) => {
+      // Inline per-card actions trigger (mobile-friendly "…" button).
+      const menuBtn = e.target.closest('.nc-menu');
+      if (menuBtn) {
+        e.preventDefault();
+        this._openNoteMenu(menuBtn.dataset.menuNote, menuBtn);
+        return;
+      }
       // Empty-state quick-create: clicking the hint creates a note.
       if (e.target.closest('.notes-empty-create')) return this._onNew();
       const card = e.target.closest('[data-note]');
       if (card) this.select(+card.dataset.note || card.dataset.note);
     });
 
-    bus.on('search:changed',  (q) => { search = q; this.render(); });
+    bus.on('search:changed',  (q) => { search = q; this._syncSearchInputs(q); this.render(); });
     bus.on('notes:changed',   () => this.render());
     bus.on('folder:selected', () => { activeNoteId = null; this.render(); });
     bus.on('locale:changed',  () => this.render());
@@ -132,8 +144,12 @@ export const noteList = {
     function card(n) {
       const preview = notes.preview(n) || '';
       const pinIcon = n.pinned ? `<svg class="nc-pin" viewBox="0 0 24 24"><path d="M12 17v5l-2-1v-4L5 12V7h14v5z"/></svg>` : '';
+      const menuLabel = i18n.t('notes.actions');
       return `
         <div class="note-card ${activeNoteId === n.id ? 'active' : ''}" data-note="${n.id}">
+          <button type="button" class="nc-menu" data-menu-note="${n.id}" aria-label="${escapeHtml(menuLabel)}" aria-haspopup="true">
+            <svg viewBox="0 0 24 24" class="ico"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
+          </button>
           <div class="nc-title">${pinIcon}<span class="nc-title-text">${escapeHtml(n.title) || i18n.t('notes.untitled')}</span></div>
           ${preview ? `<div class="nc-preview">${escapeHtml(preview)}</div>` : ''}
           <div class="nc-date">${notes.dateLabel(n)}</div>
@@ -146,6 +162,31 @@ export const noteList = {
     $('note-count').textContent = `${n} ${i18n.t(key)}`;
   },
 
+  /** Wire the mobile inline search field + clear button. */
+  _initSearch() {
+    const input = $('list-search-input');
+    const clear = $('list-search-clear');
+    if (input) {
+      input.addEventListener('input', (e) => bus.emit('search:changed', e.target.value));
+    }
+    if (clear) {
+      clear.addEventListener('click', () => {
+        bus.emit('search:changed', '');
+        $('list-search-input')?.focus();
+      });
+    }
+  },
+
+  /** Mirror the query across both search fields + toggle the clear button. */
+  _syncSearchInputs(q) {
+    const listInput = $('list-search-input');
+    const listWrap  = $('list-search');
+    if (listInput && listInput.value !== q) listInput.value = q;
+    listWrap?.classList.toggle('has-text', !!q);
+    const foldersInput = document.getElementById('search-input');
+    if (foldersInput && foldersInput.value !== q) foldersInput.value = q;
+  },
+
   _onNew() {
     const folder = sidebar.active === 'all' || sidebar.active === 'deleted' ? 'notes' : sidebar.active;
     const n = notes.create(folder);
@@ -153,9 +194,9 @@ export const noteList = {
     bus.emit('toast', i18n.t('toast.noteCreated'));
   },
 
-  async _onDelete() {
-    if (!activeNoteId) return;
-    const n = notes.find(activeNoteId);
+  async _onDelete(id = activeNoteId) {
+    if (!id) return;
+    const n = notes.find(id);
     if (!n) return;
     const inTrash = n.folder === 'deleted';
 
@@ -188,20 +229,22 @@ export const noteList = {
       if (!ok) return;
     }
     // Empty notes delete silently — no friction for clearing drafts.
-    notes.remove(activeNoteId);
+    notes.remove(id);
     activeNoteId = null;
     this.render();
     bus.emit('toast', i18n.t('toast.noteDeleted'));
     bus.emit('note:selected', null);
   },
 
-  _onPin() {
-    if (!activeNoteId) return;
-    const n = notes.find(activeNoteId);
-    notes.togglePin(activeNoteId);
+  _onPin(id = activeNoteId) {
+    if (!id) return;
+    const n = notes.find(id);
+    if (!n) return;
+    notes.togglePin(id);
     bus.emit('toast', i18n.t(n.pinned ? 'toast.noteUnpinned' : 'toast.notePinned'));
   },
 
+  /** Header Share button → the same share sheet as the inline card trigger. */
   _onShare() {
     const n = notes.find(activeNoteId);
     const hasChecklist = hasChecklistContent(n?.checklist);
@@ -209,7 +252,69 @@ export const noteList = {
       bus.emit('toast', i18n.t('toast.empty'));
       return;
     }
-    // Mock: copy a share link to clipboard.
+    this._showShareMenu($('share-btn'), n);
+  },
+
+  /* ---------- Inline note actions ---------- */
+
+  /** Open the per-note action sheet anchored to its inline "…" trigger. */
+  _openNoteMenu(id, anchor) {
+    const n = notes.find(id);
+    if (!n) return;
+    activeNoteId = id;
+    const body = [
+      popup.item({ id: 'pin', label: i18n.t(n.pinned ? 'editor.unpin' : 'editor.pin'), checked: n.pinned }),
+      popup.item({ id: 'share', label: i18n.t('editor.share') }),
+      popup.separator(),
+      popup.item({ id: 'delete', label: i18n.t('editor.delete'), danger: true }),
+    ];
+    popup.open(anchor, body, (choice) => this._noteMenuAction(choice, id, anchor));
+  },
+
+  _noteMenuAction(choice, id, anchor) {
+    if (choice === 'pin') {
+      this._onPin(id);
+      this.render();
+    } else if (choice === 'share') {
+      const n = notes.find(id);
+      if (n) this._showShareMenu(anchor, n);
+    } else if (choice === 'delete') {
+      this._onDelete(id);
+    }
+  },
+
+  /** Share options: copy the private local link, or publish publicly (NIP-23). */
+  _showShareMenu(anchor, n) {
+    const body = [
+      popup.header(i18n.t('share.menu')),
+      popup.item({ id: 'private', label: i18n.t('share.copyPrivate') }),
+      popup.item({ id: 'public', label: i18n.t('share.publish') }),
+    ];
+    popup.open(anchor, body, (choice) => this._shareAction(choice, n));
+  },
+
+  async _shareAction(choice, n) {
+    if (choice === 'private') {
+      this._copyPrivateLink(n);
+      return;
+    }
+    if (choice !== 'public') return;
+    if (!publish.canPublish()) {
+      bus.emit('toast', i18n.t('share.readOnly'));
+      return;
+    }
+    bus.emit('toast', i18n.t('share.publishing'));
+    try {
+      const res = await publish.note(n);
+      try { await navigator.clipboard?.writeText(res.url); } catch {}
+      bus.emit('toast', i18n.t('share.published'));
+    } catch (e) {
+      console.warn('[share] publish failed', e);
+      bus.emit('toast', i18n.t(e?.message === 'publish.readOnly' ? 'share.readOnly' : 'share.publishFailed'));
+    }
+  },
+
+  _copyPrivateLink(n) {
     const url = `${location.origin}/#/n/${n.id}`;
     navigator.clipboard?.writeText(url).catch(() => {});
     bus.emit('toast', i18n.t('toast.shared'));
