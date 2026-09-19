@@ -5,6 +5,7 @@
  */
 
 import { i18n } from './core/i18n.js';
+import { fonts } from './core/fonts.js';
 import { theme } from './core/theme.js';
 import { router } from './core/router.js';
 import { store } from './core/store.js';
@@ -30,6 +31,9 @@ async function boot() {
 
   // 2. i18n (synchronous: locales are static ES imports).
   i18n.setLocale(i18n.detect());
+
+  // 2b. Locale-specific webfonts (Lao only — no cost for other locales).
+  fonts.init();
 
   // 3. Hydrate IndexedDB-backed caches (notes + folders) before any read.
   //    Migrates legacy localStorage data on the first run.

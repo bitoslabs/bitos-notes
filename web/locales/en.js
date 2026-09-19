@@ -33,6 +33,7 @@ export default {
   "sort.toast": "Sorted by {mode}",
 
   "notes.new": "New note",
+  "notes.actions": "Note actions",
   "notes.note_one": "Note",
   "notes.note_other": "Notes",
   "notes.empty": "No notes here yet.",
@@ -132,6 +133,15 @@ export default {
   "toast.synced": "Notes synced",
   "toast.syncFailed": "Sync failed — will retry",
   "toast.migrated": "Notes upgraded to offline storage",
+
+  /* ---- Share (private link + NIP-23 public publish) ---- */
+  "share.menu": "Share note",
+  "share.copyPrivate": "Copy private link",
+  "share.publish": "Publish to Nostr",
+  "share.publishing": "Publishing…",
+  "share.published": "Published — public link copied",
+  "share.publishFailed": "Could not publish — check your relays",
+  "share.readOnly": "Read-only account. Import an nsec or use a wallet to publish.",
 
   /* ---- Sync status (sidebar chip) ---- */
   "sync.offline": "Offline — changes saved locally",

@@ -9,6 +9,8 @@
 :root {
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
                "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Lao-script face, injected by core/fonts.js only when locale = lo. */
+  --font-lao: "Chanthavong", var(--font-sans);
 
   --notes-yellow: #FFCC00;
   --notes-yellow-soft: #FFE680;
@@ -78,6 +80,8 @@ html, body {
   overflow-x: hidden;
   overflow-x: clip;
   overscroll-behavior-y: auto;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 body {
   font-family: var(--font-sans);
@@ -88,6 +92,10 @@ body {
   user-select: none;
   overflow: hidden;
 }
+
+/* Lao locale gets the Chanthavong face for the whole UI. Latin glyphs fall
+   back to the system sans if the Lao face doesn't cover them. */
+html[lang="lo"] body { font-family: var(--font-lao); }
 
 /* Re-enable text selection on content users actually need to read/copy:
    the editor, modal text, profile/about copy, and all form fields. The
@@ -249,6 +257,7 @@ svg { width: 100%; height: 100%; }
 /* ---- Notes list ---- */
 .notes-list { flex: 1; min-width: 0; width: 100%; overflow-x: hidden; touch-action: pan-y; }
 .note-card {
+  position: relative;
   width: 100%; text-align: start;
   padding: 9px 16px;
   border-bottom: 1px solid var(--divider);
@@ -270,6 +279,37 @@ svg { width: 100%; height: 100%; }
 .notes-list > .list-section:first-child { padding-top: 4px; }     /* avoid double top padding when the list opens with a section header */
 .note-count { text-align: center; font-size: 11px; color: var(--text-secondary); padding: 6px; border-top: 1px solid var(--divider); }
 
+/* ---- Inline per-note action trigger (mobile-friendly) ----
+   A small "…" button inside each row that opens the note actions sheet.
+   Always visible on touch, revealed on hover for pointer devices. */
+.note-card .nc-menu {
+  position: absolute;
+  inset-inline-end: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px; height: 36px;
+  display: grid; place-items: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  opacity: 0;
+  transition: opacity 0.12s, background 0.12s, color 0.12s;
+}
+.note-card .nc-menu .ico { width: 18px; height: 18px; fill: currentColor; stroke: none; }
+.note-card .nc-menu:hover { background: var(--active); color: var(--text-primary); }
+.note-card .nc-menu:active { background: var(--active); }
+@media (hover: hover) and (pointer: fine) {
+  .note-card:hover .nc-menu,
+  .note-card:focus-within .nc-menu { opacity: 1; }
+}
+@media (hover: none), (pointer: coarse) {
+  /* Touch devices get a permanently visible trigger (no sticky hover). */
+  .note-card .nc-menu { opacity: 1; }
+  /* Keep title/preview clear of the trigger. */
+  .note-card .nc-title,
+  .note-card .nc-preview,
+  .note-card .nc-date { padding-inline-end: 34px; }
+}
+
 /* Clickable empty states — quick-create affordance */
 .notes-empty-create {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
@@ -289,7 +329,6 @@ svg { width: 100%; height: 100%; }
   transition: background 0.12s, transform 0.12s;
 }
 .empty-create:hover { background: var(--hover); transform: translateY(-2px); }
-.empty-create:hover .empty-icon { box-shadow: inset 0 2px 6px rgba(0,0,0,0.08), 0 6px 16px rgba(0,0,0,0.15); }
 .empty-create:active { transform: translateY(0); }
 
 /* ---- Toolbar ---- */
@@ -300,7 +339,7 @@ svg { width: 100%; height: 100%; }
 
 /* ---- Editor ---- */
 .editor-empty { flex: 1; display: grid; place-items: center; text-align: center; color: var(--text-secondary); padding: 24px; }
-.empty-icon { width: 64px; height: 64px; margin: 0 auto 12px; border-radius: var(--radius-lg); background: var(--notes-yellow); display: grid; place-items: center; box-shadow: inset 0 2px 6px rgba(0,0,0,0.08); }
+.empty-icon { width: 64px; height: 64px; margin: 0 auto 12px; border-radius: var(--radius-lg); background: var(--notes-yellow); display: grid; place-items: center; }
 .empty-icon svg { width: 34px; height: 34px; fill: none; stroke: white; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .empty-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
 .empty-sub { font-size: 13px; margin-top: 4px; }
@@ -372,8 +411,8 @@ svg { width: 100%; height: 100%; }
 /* Segmented control */
 .segmented { display: inline-flex; background: var(--hover); border-radius: var(--radius-sm); padding: 2px; gap: 2px; }
 .segmented.wrap { flex-wrap: wrap; }
-.segmented button { padding: 6px 14px; border-radius: 5px; font-size: 13px; font-weight: 500; color: var(--text-secondary); transition: background 0.12s, color 0.12s, box-shadow 0.12s; white-space: nowrap; }
-.segmented button.active { background: var(--text-primary); color: var(--bg-window); box-shadow: 0 1px 3px rgba(0,0,0,0.12); font-weight: 600; }
+.segmented button { padding: 6px 14px; border-radius: 5px; font-size: 13px; font-weight: 500; color: var(--text-secondary); transition: background 0.12s, color 0.12s; white-space: nowrap; }
+.segmented button.active { background: var(--text-primary); color: var(--bg-window); font-weight: 600; }
 
 /* Accent color picker */
 .accent-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
@@ -681,33 +720,41 @@ svg { width: 100%; height: 100%; }
 }
 
 /* ============================================================
-   MOBILE / TABLET (≤860px) — unified single-pane stack
+   MOBILE / TABLET (≤860px) — native single-screen stack
    One consistent behaviour from phone up to small tablet:
      Folders  →  Notes list  →  Editor
-   driven by #app[data-view="folders|list|editor"].
-   (Previously a separate two-pane "tablet" mode existed, but its folders
-   overlay was never reachable — `show-folders` was dead CSS — so the stack
-   is now the single source of truth for everything below the desktop cut.)
+   Each level is a full-screen layer (no partial drawer, no peeking
+   layers) so transitions read like a native push/pop. Driven by
+   #app[data-view="folders|list|editor"].
    ============================================================ */
 @media (max-width: 860px) {
-  .app { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+  /* Establish the containing block so panes are positioned + clipped
+     against the app shell, not the viewport. */
+  .app { position: relative; grid-template-columns: 1fr; grid-template-rows: 1fr; }
   .back-btn { display: inline-flex; }
 
   .pane-folders, .pane-list, .pane-editor {
     position: absolute; inset: 0;
-    max-width: 100%;
-    transition: transform 0.28s var(--pane-ease);
+    width: 100%; max-width: 100%; height: 100%;
+    transition: transform 0.26s var(--pane-ease);
     will-change: transform;
+    overscroll-behavior: contain;
   }
-  .pane-list, .pane-editor { width: 100%; z-index: 20; }
-  /* Folders is a partial-width drawer on tablets, full-width on phones. */
+  .pane-list, .pane-editor { z-index: 20; }
+  /* Folders is a full-screen root on mobile — it must never reveal another
+     pane behind it (that partial-drawer bleed looked broken on phones). */
   .pane-folders {
-    width: min(86vw, 360px);
     z-index: 40;
-    box-shadow: 4px 0 24px rgba(0,0,0,0.12);
+    border-right: 0;
+    box-shadow: none;
   }
 
-  /* iOS-style depth: the level behind the active one peeks in and dims. */
+  /* Default state before JS sets [data-view] = folders, so panes never
+     stack on top of each other during first paint. */
+  .pane-folders { transform: translateX(0); }
+  .pane-list, .pane-editor { transform: translateX(100%); }
+
+  /* Full-width push/pop: the outgoing level slides fully off-screen. */
   .app[data-view="folders"] .pane-folders { transform: translateX(0); }
   .app[data-view="folders"] .pane-list,
   .app[data-view="folders"] .pane-editor { transform: translateX(100%); }
@@ -717,8 +764,21 @@ svg { width: 100%; height: 100%; }
   .app[data-view="list"] .pane-editor { transform: translateX(100%); }
 
   .app[data-view="editor"] .pane-folders { transform: translateX(-100%); }
+  /* The list sits just behind the editor so an edge-swipe reveals it, iOS-style.
+     The editor is opaque and full-screen, so nothing bleeds through at rest. */
   .app[data-view="editor"] .pane-list { transform: translateX(-28%); filter: brightness(0.96); }
   .app[data-view="editor"] .pane-editor { transform: translateX(0); }
+
+  /* Native momentum scrolling inside each screen. */
+  .scroll, .scroll-x { -webkit-overflow-scrolling: touch; }
+
+  /* Native touch behaviour: no double-tap zoom delay, no tap highlights,
+     no pull-to-refresh/scroll chaining fighting the app shell. */
+  body { overscroll-behavior: none; }
+  button, a, .note-card, .folder-row, .setup-option, .list-section {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
 
   /* Comfortable mobile reading widths (refined further at ≤420px below). */
   .editor-paper { padding: 20px 18px 80px; }
@@ -734,7 +794,7 @@ svg { width: 100%; height: 100%; }
   /* On mobile the folders pane is a router-driven overlay; the desktop
      hide-folders toggle is irrelevant, so neutralise it here. */
   .app.hide-folders { grid-template-columns: 1fr; }
-  .app.hide-folders .pane-folders { width: auto; opacity: 1; pointer-events: auto; }
+  .app.hide-folders .pane-folders { width: 100%; opacity: 1; pointer-events: auto; }
   /* macOS-style traffic-light titlebar is desktop-only chrome. */
   .titlebar { display: none; }
 }
@@ -774,7 +834,6 @@ svg { width: 100%; height: 100%; }
   padding-bottom: env(safe-area-inset-bottom);
   background: var(--bg-elevated);
   border-top: 1px solid var(--divider);
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
   transform: translateZ(0);
   /* Slide out of view when the on-screen keyboard is up (toggle: .kb-open). */
   transition: transform 0.2s var(--pane-ease), opacity 0.2s var(--pane-ease);
@@ -804,7 +863,8 @@ svg { width: 100%; height: 100%; }
 .bb-btn.active { color: var(--notes-blue); }
 .bb-btn.active .ico { transform: scale(1.08); }
 
-/* The New-note FAB: a raised accent disc, slightly taller than its row. */
+/* The New-note FAB: a raised accent disc, slightly taller than its row.
+   Flat by design — no drop shadow, only the accent fill + hairline border. */
 .bb-fab {
   flex: 0 0 auto;
   align-self: center;
@@ -813,11 +873,11 @@ svg { width: 100%; height: 100%; }
   margin-top: -22px;                 /* lift it above the bar */
   background: var(--notes-blue);
   color: #fff;
-  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.35);
-  transition: transform 0.12s var(--pane-ease), box-shadow 0.12s, filter 0.12s;
+  border: 2px solid var(--bg-elevated);
+  transition: transform 0.12s var(--pane-ease), filter 0.12s;
 }
 .bb-fab .ico { width: 26px; height: 26px; stroke-width: 2.4; transition: none; }
-.bb-fab:active { color: #fff; transform: scale(0.9); box-shadow: 0 2px 6px rgba(0, 122, 255, 0.35); }
+.bb-fab:active { color: #fff; transform: scale(0.9); }
 .bb-fab:hover { filter: brightness(1.06); }
 
 /* Leave room above the bottom bar so list/editor content isn't covered. */
@@ -844,7 +904,6 @@ svg { width: 100%; height: 100%; }
     background: var(--bg-elevated);
     border-top: 1px solid var(--divider);
     padding: 8px 10px;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
   }
   /* When the format bar is open above the bottom bar, push the bottom bar down
      out of the way so both never overlap. */
@@ -967,6 +1026,7 @@ body:has(#popup-menu:not(.hidden)) .bottom-bar {
 /* ---- Roomier tap targets on touch ---- */
 @media (max-width: 860px) {
   .note-card { padding: 12px 16px; }
+  .note-card .nc-menu { width: 40px; height: 40px; }
   .note-card .nc-title { font-size: 15px; }
   .note-card .nc-preview { font-size: 13px; margin-top: 3px; }
   .note-card .nc-date { font-size: 11px; margin-top: 4px; }

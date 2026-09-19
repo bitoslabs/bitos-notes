@@ -90,7 +90,9 @@ export function bech32Encode(hrp, bytes) {
 export function bech32Decode(str) {
   if (typeof str !== 'string') throw new Error('bech32: not a string');
   str = str.toLowerCase();
-  if (str.length > 90) throw new Error('bech32: too long');
+  // BIP-173 caps at 90 chars, but NIP-19 identifiers (naddr/nevent/nprofile)
+  // legitimately exceed it, so allow a generous ceiling instead.
+  if (str.length > 500) throw new Error('bech32: too long');
   const pos = str.lastIndexOf('1');
   if (pos < 1 || pos + 7 > str.length) throw new Error('bech32: invalid separator');
   const hrp = str.slice(0, pos);
@@ -310,6 +312,37 @@ export function npubToPk(npub) {
   const { hrp, bytes } = bech32Decode(npub);
   if (hrp !== 'npub' || bytes.length !== 32) throw new Error('invalid npub');
   return bytes;
+}
+
+/* =====================================================================
+ * NIP-19 shareable identifiers.
+ * `naddr` encodes an addressable (parameterized-replaceable) event:
+ *   TLV type 0 = d-tag identifier (UTF-8)
+ *   TLV type 1 = relay hint (UTF-8, optional, repeatable)
+ *   TLV type 2 = author pubkey (32 raw bytes)
+ *   TLV type 3 = kind (4-byte big-endian)
+ * This is the canonical link for NIP-23 long-form notes (kind 30023).
+ * ===================================================================== */
+
+/** Encode an naddr for NIP-23 public notes. `pubkey` is 32-byte or hex. */
+export function naddrEncode({ identifier = '', pubkey, kind, relays = [] }) {
+  const pk = typeof pubkey === 'string' ? fromHex(pubkey) : pubkey;
+  if (!(pk instanceof Uint8Array) || pk.length !== 32) throw new Error('naddr: pubkey must be 32 bytes');
+  if (!Number.isInteger(kind) || kind < 0) throw new Error('naddr: invalid kind');
+
+  const enc = new TextEncoder();
+  const bytes = [];
+  const push = (type, value) => {
+    if (value.length > 255) throw new Error('naddr: TLV value too long');
+    bytes.push(type, value.length, ...value);
+  };
+
+  push(0, enc.encode(identifier || ''));
+  for (const relay of relays) push(1, enc.encode(relay));
+  push(2, pk);
+  push(3, [(kind >>> 24) & 0xff, (kind >>> 16) & 0xff, (kind >>> 8) & 0xff, kind & 0xff]);
+
+  return bech32Encode('naddr', Uint8Array.from(bytes));
 }
 
 /** Derive pubkey (32 bytes) from a private key (raw bytes). */

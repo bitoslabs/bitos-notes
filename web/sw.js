@@ -5,7 +5,7 @@
  * app is fully functional offline once cached.
  */
 
-const VERSION = 'v20';
+const VERSION = 'v23';
 const CACHE = `bitos-notes-${VERSION}`;
 
 // App shell — everything needed to boot offline.
@@ -21,6 +21,7 @@ const SHELL = [
   './js/core/nip44.js',
   './js/core/sync.js',
   './js/core/i18n.js',
+  './js/core/fonts.js',
   './js/core/theme.js',
   './js/core/router.js',
   './js/features/folders.js',
@@ -30,6 +31,7 @@ const SHELL = [
   './js/features/relays.js',
   './js/features/profile.js',
   './js/features/account.js',
+  './js/features/publish.js',
   './js/ui/sidebar.js',
   './js/ui/notelist.js',
   './js/ui/settings.js',
@@ -40,6 +42,7 @@ const SHELL = [
   './js/ui/layout.js',
   './js/ui/bottombar.js',
   './js/ui/viewport.js',
+  './js/ui/swipe.js',
   './locales/en.js',
   './locales/fr.js',
   './locales/es.js',
